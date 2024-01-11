@@ -29,6 +29,15 @@ to use this script version.
 
 ## Usage:
 
+First off, I recommend [the extension](https://github.com/greggman/webgpu-dev-extension)
+as it's just easier to use. Generally you don't want to run with this script enabled.
+Rather, run your code as normal. When you see an error, if it's not obvious, turn
+on this script via the extension and check the JavaScript console. You should see
+messages with stacks. Click the links in the stacks to go to the code that generated
+the error.
+
+Otherwise, to use the script directly:
+
 ```js
 import './webgpu-debug-helper.js';
 ```
@@ -40,12 +49,12 @@ import 'https://greggman.github.io/webgpu-debug-helper/dist/0.x/webgpu-debug-hel
 ```
 
 There is nothing else to do. The webgpu-debug-helper will wrap the WebGPU API and
-star generating errors.
+start generating error messages. 
 
 If you wanted to import programmatically you could do something like this
 
 ```js
-if (debugging) {
+if (debug) {
   await import('./webgpu-debug-helper.js');
 }
 ```
