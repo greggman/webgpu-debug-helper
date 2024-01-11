@@ -6,6 +6,9 @@
 
 This script makes it easier to debug WebGPU apps.
 
+note: this script is a work in progress. Pass encoder checking
+is barely implemented.
+
 You can use it in your own projects via a script OR, you can
 [use it as an extension](https://github.com/greggman/webgpu-dev-extension).
 
