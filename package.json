@@ -1,0 +1,68 @@
+{
+  "name": "webgpu-debug-helper",
+  "version": "0.0.2",
+  "description": "webgpu debug helper",
+  "main": "dist/0.x/webgpu-debug-helper.js",
+  "type": "module",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "build": "npm run make",
+    "build-ci": "npm run build && node build/tools/prep-for-deploy.js",
+    "make": "rollup -c",
+    "check": "npm run lint",
+    "check-ci": "npm run pre-push",
+    "lint": "eslint \"src/**/*.{js,ts,tsx}\"",
+    "pre-push": "npm run lint && npm run build && npm run test",
+    "watch": "rollup -c -w",
+    "start": "node build/tools/serve.js",
+    "test": "node test/puppeteer.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/greggman/webgpu-debug-helper.git"
+  },
+  "files": [
+    "dist/**"
+  ],
+  "keywords": [
+    "webgpu",
+    "gpu",
+    "3d",
+    "graphics"
+  ],
+  "author": "Gregg Tavares",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/greggman/webgpu-debug-helper/issues"
+  },
+  "homepage": "https://github.com/greggman/webgpu-debug-helper#readme",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.3",
+    "@rollup/plugin-typescript": "^11.1.2",
+    "@tsconfig/recommended": "^1.0.2",
+    "@typescript-eslint/eslint-plugin": "^6.2.1",
+    "@typescript-eslint/parser": "^6.2.1",
+    "@webgpu/types": "^0.1.34",
+    "eslint": "^8.46.0",
+    "eslint-plugin-html": "^7.1.0",
+    "eslint-plugin-one-variable-per-var": "^0.0.3",
+    "eslint-plugin-optional-comma-spacing": "^0.0.4",
+    "eslint-plugin-require-trailing-comma": "^0.0.1",
+    "express": "^4.18.2",
+    "markdown-it": "^13.0.1",
+    "mocha": "^10.2.0",
+    "puppeteer": "^21.0.1",
+    "rollup": "^3.27.1",
+    "servez": "^2.1.2",
+    "tslib": "^2.6.1",
+    "typedoc": "^0.24.8",
+    "typescript": "^5.1.6",
+    "wgsl_reflect": "github:brendan-duncan/wgsl_reflect#713ad94"
+  },
+  "dependencies": {
+    "webgpu-utils": "^1.3.0"
+  }
+}
