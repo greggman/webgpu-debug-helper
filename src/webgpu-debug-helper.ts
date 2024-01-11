@@ -3,6 +3,12 @@ if (typeof GPUDevice !== 'undefined') {
   const origPushErrorScope = GPUDevice.prototype.pushErrorScope;
   const origPopErrorScope = GPUDevice.prototype.popErrorScope;
 
+  function assert(condition: boolean, msg?: string | (() => string)): asserts condition {
+    if (!condition) {
+      emitError(msg ? (typeof msg === 'string' ? msg : msg()) : '');
+    }
+  }
+
   function getFilterForGPUError(error: GPUError): GPUErrorFilter {
     if (error instanceof GPUValidationError) {
       return 'validation';
@@ -97,4 +103,89 @@ if (typeof GPUDevice !== 'undefined') {
       return device;
     }
   })(GPUAdapter.prototype.requestDevice);
+
+  function wrapFunctionBefore<K extends PropertyKey, T extends Record<K, (...args: any) => any>>(
+      API: { prototype: T },
+      fnName: K, fn: (...args: Parameters<T[K]>) => void) {
+    const origFn = API.prototype[fnName];
+    API.prototype[fnName] = function (this: T, ...args: any) {
+      fn.call(this, ...args);
+      return origFn.call(this, ...args);
+    } as any;
+  }
+
+  function wrapFunctionAfter<K extends PropertyKey, T extends Record<K, (...args: any) => any>>(
+      API: { prototype: T },
+      fnName: K, fn: (obj: ReturnType<T[K]>,...args: Parameters<T[K]>) => void) {
+    const origFn = API.prototype[fnName];
+    API.prototype[fnName] = function (this: T, ...args: any) {
+      const result = origFn.call(this, ...args);
+      fn.call(this, result, ...args);
+      return result;
+    } as any;
+  }
+
+  type LabeledObject = GPUTexture | GPUTextureView | GPURenderPassEncoder | GPUCommandEncoder;
+
+  function emitError(msg: string, objs: LabeledObject[] = []) {
+    throw new Error(`${msg}\n${(objs).map(o => `[${o.constructor.name}]${o.label}`).join('\n')}`);
+  }
+
+  type RenderPassInfo = {
+    targetWidth: number,
+    targetHeight: number,
+  };
+
+  const textureViewToTexture = new WeakMap<GPUTextureView, GPUTexture>();
+  const renderPassToPassInfoMap = new WeakMap<GPURenderPassEncoder, RenderPassInfo>();
+
+  wrapFunctionAfter(GPUTexture, 'createView', function(this: GPUTexture, view: GPUTextureView, desc?: GPUTextureViewDescriptor) {
+    textureViewToTexture.set(view, this);
+  });
+
+  wrapFunctionAfter(GPUCommandEncoder, 'beginRenderPass', function(this: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, desc: GPURenderPassDescriptor) {
+    let targetWidth: number | undefined;
+    let targetHeight: number | undefined;
+
+    const addView = (attachment: GPURenderPassColorAttachment | GPURenderPassDepthStencilAttachment | null | undefined) => {
+      if (!attachment) {
+        return;
+      }
+      const {view} = attachment;
+      const texture = textureViewToTexture.get(view)!;
+      const {width, height} = texture;
+      if (targetWidth === undefined) {
+        targetWidth = width;
+        targetHeight = height;
+      } else if (targetWidth !== width || targetHeight !== height) {
+        emitError('attachments are not all the same width and height', [view, texture, passEncoder, this]);
+      }
+    }
+
+    for (const colorAttachment of desc.colorAttachments || []) {
+        addView(colorAttachment);
+    }
+
+    addView(desc.depthStencilAttachment);
+
+    assert(targetWidth !== undefined);
+    assert(targetHeight !== undefined);
+
+    renderPassToPassInfoMap.set(passEncoder, {
+      targetWidth,
+      targetHeight,
+    });
+  });
+
+  wrapFunctionBefore(GPURenderPassEncoder, 'setViewport', function(this: GPURenderPassEncoder, x: number, y: number, width: number, height: number, minDepth: number, maxDepth: number) {
+    const {
+      targetWidth,
+      targetHeight,
+    } = renderPassToPassInfoMap.get(this)!;
+    assert(x >= 0, 'x < 0');
+    assert(y >= 0, 'y < 0');
+    assert(x + width <= targetWidth, 'x + width > texture.width');
+    assert(y + height <= targetHeight, 'y + height > texture.height');
+  });
+
 }

@@ -1,5 +1,5 @@
 /* global mocha */
-import './tests/webgpu-debug-helper.js';
+import './tests/webgpu-debug-helper-tests.js';
 
 const settings = Object.fromEntries(new URLSearchParams(window.location.search).entries());
 if (settings.reporter) {
