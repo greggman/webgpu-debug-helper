@@ -188,4 +188,15 @@ if (typeof GPUDevice !== 'undefined') {
     assert(y + height <= targetHeight, 'y + height > texture.height');
   });
 
+  wrapFunctionBefore(GPURenderPassEncoder, 'setScissorRect', function(this: GPURenderPassEncoder, x: number, y: number, width: number, height: number) {
+    const {
+      targetWidth,
+      targetHeight,
+    } = renderPassToPassInfoMap.get(this)!;
+    assert(x >= 0, 'x < 0');
+    assert(y >= 0, 'y < 0');
+    assert(x + width <= targetWidth, 'x + width > texture.width');
+    assert(y + height <= targetHeight, 'y + height > texture.height');
+  });
+
 }
