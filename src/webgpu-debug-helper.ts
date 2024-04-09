@@ -9,9 +9,11 @@ const deviceToErrorScopeStack: WeakMap<GPUDevice, {filter: GPUErrorFilter, error
 const origPushErrorScope = GPUDevice.prototype.pushErrorScope;
 const origPopErrorScope = GPUDevice.prototype.popErrorScope;
 
-function assert(condition: boolean, msg?: string | (() => string)): asserts condition {
+function assert(condition: boolean, msg?: string | (() => string), resources?: any[]): asserts condition {
   if (!condition) {
-    emitError(msg ? (typeof msg === 'string' ? msg : msg()) : '');
+    const lines = (resources || []).map(r => `    ${r.constructor.name}${r.label ? `(${r.label})` :''}`).join('\n')
+    const m = msg ? (typeof msg === 'string' ? msg : msg()) : '';
+    emitError(`${m}${lines ? `\n${lines}`: ''}`);
   }
 }
 
@@ -168,9 +170,14 @@ type BufferWithOffsetAndSize = {
   size: number,
 };
 
+type BindGroupBinding = {
+  bindGroup?: GPUBindGroup | null | undefined,
+  dynamicOffsets?: Uint32Array,
+};
+
 type PassInfo = {
   commandEncoder: GPUCommandEncoder,
-  bindGroups: (GPUBindGroup | null | undefined)[],
+  bindGroups: BindGroupBinding[],
 }
 
 type ComputePassInfo = PassInfo & {
@@ -185,8 +192,6 @@ type RenderPassInfo = PassInfo & {
   indexFormat?: GPUIndexFormat,
   vertexBuffers: (BufferWithOffsetAndSize | undefined)[],
 };
-
-type PassEncoder = GPURenderPassEncoder | GPUComputePassEncoder | GPURenderBundleEncoder;
 
 const s_textureViewToTexture = new WeakMap<GPUTextureView, GPUTexture>();
 const s_computePassToPassInfoMap = new WeakMap<GPUComputePassEncoder, ComputePassInfo>();
@@ -245,14 +250,27 @@ function trackBindGroupLayout(this: GPUDevice, bindGroupLayout: GPUBindGroupLayo
   s_bindGroupLayoutToBindGroupLayoutDescriptor.set(bindGroupLayout, desc);
 }
 
-//function setBindGroup(this: PassEncoder, _: void, [ndx, bindGroup]: [number, GPUBindGroup | null, ...any]) {
-//  s_passToState.get(this)!.bindGroups[ndx] = bindGroup;
-//}
-//
-//function wobjToString(o: GPUObjectBase) {
-//  return `[${o.constructor.name}]${o.label}`;
-//}
-//
+function setBindGroup(parent: GPUCommandEncoder, bindGroupBindings: BindGroupBinding[], index: number, bindGroup: GPUBindGroup | null | undefined, dynamicOffsets?: Uint32Array) {
+  const device = s_objToDevice.get(parent);
+  const maxIndex = device.limits.maxBindGroups;
+  assert(index >= 0, () => `index(${index}) must be >= 0`);
+  assert(index < maxIndex, () => `index(${index}) must be < device.limits.maxBindGroups(${maxIndex})`);
+  // TODO: Get dynamic offsets from layout
+  const dynamicOffsetCount = 0 ; //bindGroup ? layout.dynamicOffsetCount : 0;
+  dynamicOffsets = dynamicOffsets || new Uint32Array(0);
+  assert(dynamicOffsets.length === dynamicOffsetCount, `there must be the same number of dynamicOffsets(${dynamicOffsets.length}) as the layout requires (${dynamicOffsetCount})`)
+  if (bindGroup) {
+    assert(device === s_objToDevice.get(bindGroup), () => `bindGroup must be from same device as ${parent.constructor.name}`, [bindGroup, parent]);
+    // TODO: Validate Dynamic Offsets
+    bindGroupBindings[index] = {
+      bindGroup,
+      dynamicOffsets,
+    };
+  } else {
+    bindGroupBindings[index] = undefined;
+  }
+}
+
 //function validateBindGroups(this: PassEncoder, _: void) {
 //  const {pipeline, bindGroups} = s_passToState.get(this)!;
 //  if (!pipeline) {
@@ -365,19 +383,36 @@ wrapFunctionAfter(GPUTexture, 'createView', function(this: GPUTexture, view: GPU
   s_textureViewToTexture.set(view, this);
 });
 
+wrapFunctionAfter(GPUCommandEncoder, 'beginComputePass', function(this: GPUCommandEncoder, passEncoder: GPUComputePassEncoder, [desc]) {
+  s_computePassToPassInfoMap.set(passEncoder, {
+    commandEncoder: this,
+    bindGroups: [],
+  });
+});
+
+wrapFunctionBefore(GPUComputePassEncoder, 'setBindGroup', function(this: GPUComputePassEncoder, [index, bindGroup, dynamicOffsets]) {
+  const info = s_computePassToPassInfoMap.get(this)!;
+  setBindGroup(info.commandEncoder, info.bindGroups, index, bindGroup, dynamicOffsets);
+});
+
 wrapFunctionBefore(GPUComputePassEncoder, 'setPipeline', function(this: GPUComputePassEncoder, [pipeline]) {
   const info = s_computePassToPassInfoMap.get(this)!;
-  assert(s_objToDevice.get(info.commandEncoder) === s_objToDevice.get(pipeline), 'pipeline must be from same device as computePassEncoder');
+  assert(s_objToDevice.get(info.commandEncoder) === s_objToDevice.get(pipeline), 'pipeline must be from same device as computePassEncoder', [this, info.commandEncoder]);
   info.pipeline = pipeline;
+});
+
+wrapFunctionBefore(GPURenderPassEncoder, 'setBindGroup', function(this: GPURenderPassEncoder, [index, bindGroup, dynamicOffsets]) {
+  const info = s_renderPassToPassInfoMap.get(this)!;
+  setBindGroup(info.commandEncoder, info.bindGroups, index, bindGroup, dynamicOffsets);
 });
 
 wrapFunctionBefore(GPURenderPassEncoder, 'setPipeline', function(this: GPURenderPassEncoder, [pipeline]) {
   const info = s_renderPassToPassInfoMap.get(this)!;
-  assert(s_objToDevice.get(info.commandEncoder) === s_objToDevice.get(pipeline), 'pipeline must be from same device as renderPassEncoder');
+  assert(s_objToDevice.get(info.commandEncoder) === s_objToDevice.get(pipeline), 'pipeline must be from same device as renderPassEncoder', [this, info.commandEncoder]);
   info.pipeline = pipeline;
 });
 
-wrapFunctionAfter(GPUCommandEncoder, 'beginRenderPass', function(this: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, [desc]: [GPURenderPassDescriptor]) {
+wrapFunctionAfter(GPUCommandEncoder, 'beginRenderPass', function(this: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, [desc]) {
   let targetWidth: number | undefined;
   let targetHeight: number | undefined;
 
@@ -402,8 +437,8 @@ wrapFunctionAfter(GPUCommandEncoder, 'beginRenderPass', function(this: GPUComman
 
   addView(desc.depthStencilAttachment);
 
-  assert(targetWidth !== undefined, 'render pass targets width is undefined');
-  assert(targetHeight !== undefined, 'render pass targets height is undefined');
+  assert(targetWidth !== undefined, 'render pass targets width is undefined', [passEncoder]);
+  assert(targetHeight !== undefined, 'render pass targets height is undefined', [passEncoder]);
 
   s_renderPassToPassInfoMap.set(passEncoder, {
     commandEncoder: this,
@@ -420,11 +455,11 @@ wrapFunctionBefore(GPURenderPassEncoder, 'setIndexBuffer', function(this: GPURen
   offset = offset ?? 0;
   size = size ?? Math.max(0, buffer.size - offset);
 
-  assert(device === s_objToDevice.get(buffer), 'buffer must be from the same device');
-  assert(!!(buffer.usage & GPUBufferUsage.INDEX), () => `buffer(${bufferUsageToString(buffer.usage)}) must have usage INDEX`);
+  assert(device === s_objToDevice.get(buffer), 'buffer must be from the same device', [buffer, this]);
+  assert(!!(buffer.usage & GPUBufferUsage.INDEX), () => `buffer(${bufferUsageToString(buffer.usage)}) must have usage INDEX`, [buffer, this]);
   const align =  format === 'uint16' ? 2 : 4;
-  assert(offset % align === 0, () => `offset(${offset}) must be multiple of index format: ${format}`);
-  assert(offset + size <= buffer.size, () => `offset(${offset}) + size(${size}) is not <= buffer.size(${buffer.size})`);
+  assert(offset % align === 0, () => `offset(${offset}) must be multiple of index format: ${format}`, [buffer, this]);
+  assert(offset + size <= buffer.size, () => `offset(${offset}) + size(${size}) is not <= buffer.size(${buffer.size})`, [buffer, this]);
 
   info.indexBuffer = {
     buffer,
@@ -441,15 +476,15 @@ wrapFunctionBefore(GPURenderPassEncoder, 'setVertexBuffer', function(this: GPURe
   const bufferSize = buffer?.size || 0;
   offset = offset ?? 0;
   size = size ?? Math.max(0, bufferSize - offset);
-  assert(slot >= 0, () => `slot(${slot}) must be >= 0`);
-  assert(slot < maxSlot, () => `slot(${slot}) must be < device.limits.maxVertexBuffers(${maxSlot})`);
-  assert(offset % 4 === 0, () => `offset(${offset}) must be multiple of 4`);
-  assert(offset + size <= bufferSize, () => `offset(${offset}) + size(${size}) is not <= buffer.size(${bufferSize})`);
+  assert(slot >= 0, () => `slot(${slot}) must be >= 0`, [this]);
+  assert(slot < maxSlot, () => `slot(${slot}) must be < device.limits.maxVertexBuffers(${maxSlot})`, [this]);
+  assert(offset % 4 === 0, () => `offset(${offset}) must be multiple of 4`, [this]);
+  assert(offset + size <= bufferSize, () => `offset(${offset}) + size(${size}) is not <= buffer.size(${bufferSize})`, [this, ...(buffer ? [buffer] : [])]);
   if (!buffer) {
     info.vertexBuffers[slot] = undefined;
   } else {
-    assert(device === s_objToDevice.get(buffer), 'buffer must be from the same device');
-    assert(!!(buffer.usage & GPUBufferUsage.VERTEX), () => `buffer(${bufferUsageToString(buffer.usage)}) must have usage VERTEX`);
+    assert(device === s_objToDevice.get(buffer), 'buffer must be from the same device', [buffer, this]);
+    assert(!!(buffer.usage & GPUBufferUsage.VERTEX), () => `buffer(${bufferUsageToString(buffer.usage)}) must have usage VERTEX`, [buffer, this]);
     info.vertexBuffers[slot] = {
       buffer,
       offset,
@@ -463,10 +498,10 @@ wrapFunctionBefore(GPURenderPassEncoder, 'setViewport', function(this: GPURender
     targetWidth,
     targetHeight,
   } = s_renderPassToPassInfoMap.get(this)!;
-  assert(x >= 0, () => `x(${x}) < 0`);
-  assert(y >= 0, () => `y(${y}) < 0`);
-  assert(x + width <= targetWidth, () => `x(${x}) + width(${width}) > texture.width(${targetWidth})`);
-  assert(y + height <= targetHeight, () => `y(${x}) + height(${height}) > texture.height(${targetHeight})`);
+  assert(x >= 0, () => `x(${x}) < 0`, [this]);
+  assert(y >= 0, () => `y(${y}) < 0`, [this]);
+  assert(x + width <= targetWidth, () => `x(${x}) + width(${width}) > texture.width(${targetWidth})`, [this]);
+  assert(y + height <= targetHeight, () => `y(${x}) + height(${height}) > texture.height(${targetHeight})`, [this]);
 });
 
 wrapFunctionBefore(GPURenderPassEncoder, 'setScissorRect', function(this: GPURenderPassEncoder, [x, y, width, height]: [number, number, number, number]) {
@@ -474,8 +509,8 @@ wrapFunctionBefore(GPURenderPassEncoder, 'setScissorRect', function(this: GPURen
     targetWidth,
     targetHeight,
   } = s_renderPassToPassInfoMap.get(this)!;
-  assert(x >= 0, () => `x(${x}) < 0`);
-  assert(y >= 0, () => `y(${y}) < 0`);
-  assert(x + width <= targetWidth, () => `x(${x}) + width(${width}) > texture.width(${targetWidth})`);
-  assert(y + height <= targetHeight, () => `y(${x}) + height(${height}) > texture.height(${targetHeight})`);
+  assert(x >= 0, () => `x(${x}) < 0`, [this]);
+  assert(y >= 0, () => `y(${y}) < 0`, [this]);
+  assert(x + width <= targetWidth, () => `x(${x}) + width(${width}) > texture.width(${targetWidth})`, [this]);
+  assert(y + height <= targetHeight, () => `y(${x}) + height(${height}) > texture.height(${targetHeight})`, [this]);
 });

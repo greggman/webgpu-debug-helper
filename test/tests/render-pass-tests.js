@@ -45,6 +45,27 @@ async function createRenderPipeline(device) {
   return pipeline;
 }
 
+async function createBindGroup(device) {
+  device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
+  const bindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: {},
+      },
+    ],
+  });
+  const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
+  const bindGroup = device.createBindGroup({
+    layout: bindGroupLayout,
+    entries: [
+      { binding: 0, resource: { buffer } },
+    ]
+  });
+  return bindGroup;
+}
+
 describe('test render pass encoder', () => {
 
   describe('check errors on beginRenderPass', () => {
@@ -159,6 +180,45 @@ describe('test render pass encoder', () => {
       const pass = await createRenderPass();
       expectValidationError(true, () => {
         pass.setPipeline(pipeline);
+      });
+    });
+
+  });
+
+  describe('check errors on setBindGroup', () => {
+
+    it('works', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass(device);
+      const bindGroup = await createBindGroup(device);
+      expectValidationError(false, () => {
+        pass.setBindGroup(0, bindGroup);
+      });
+    });
+
+    it('bindGroup from different device', async () => {
+      const pass = await createRenderPass();
+      const bindGroup = await createBindGroup();
+      expectValidationError(true, () => {
+        pass.setBindGroup(0, bindGroup);
+      });
+    });
+
+    it('index < 0', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass(device);
+      const bindGroup = await createBindGroup(device);
+      expectValidationError(true, () => {
+        pass.setBindGroup(-1, bindGroup);
+      });
+    });
+
+    it('index > max', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass(device);
+      const bindGroup = await createBindGroup(device);
+      expectValidationError(true, () => {
+        pass.setBindGroup(device.limits.maxBindGroups, bindGroup);
       });
     });
 
