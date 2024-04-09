@@ -166,6 +166,22 @@ describe('test render pass encoder', () => {
 
   describe('check errors on setVertexBuffer', () => {
 
+    it('works with null', async () => {
+      const pass = await createRenderPass();
+      expectValidationError(false, () => {
+        pass.setVertexBuffer(0, null);
+      });
+    });
+
+    it('works with buffer', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass(device);
+      const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.VERTEX});
+      expectValidationError(false, () => {
+        pass.setVertexBuffer(0, buffer);
+      });
+    });
+
     it('slot < 0', async () => {
       const pass = await createRenderPass();
       expectValidationError(true, () => {
@@ -230,6 +246,73 @@ describe('test render pass encoder', () => {
       const pass = await createRenderPass(device);
       expectValidationError(true, () => {
         pass.setVertexBuffer(0, buffer);
+      });
+    });
+
+  });
+
+  describe('check errors on setIndexBuffer', () => {
+
+    it('works', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
+      const pass = await createRenderPass(device);
+      expectValidationError(false, () => {
+        pass.setIndexBuffer(buffer, 'uint16');
+      });
+    });
+
+    it('offset is not multiple of 2 when format is uint16', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
+      const pass = await createRenderPass(device);
+      expectValidationError(true, () => {
+        pass.setIndexBuffer(buffer, 'uint16', 1);
+      });
+    });
+
+    it('offset is not multiple of 4 when format is uint32', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
+      const pass = await createRenderPass(device);
+      expectValidationError(true, () => {
+        pass.setIndexBuffer(buffer, 'uint32', 2);
+      });
+    });
+
+    it('offset + size > buffer.size', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
+      const pass = await createRenderPass(device);
+      expectValidationError(true, () => {
+        pass.setIndexBuffer(buffer, 'uint16', 0, 5);
+      });
+    });
+
+    it('offset + size > buffer.size (offset + size)', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const buffer = device.createBuffer({size: 8, usage: GPUBufferUsage.INDEX});
+      const pass = await createRenderPass(device);
+      expectValidationError(true, () => {
+        pass.setIndexBuffer(buffer, 'uint16', 4, 5);
+      });
+    });
+
+    it('buffer from different device', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
+      const pass = await createRenderPass();
+      expectValidationError(true, () => {
+        pass.setIndexBuffer(buffer, 'uint16');
+      });
+    });
+
+    it('buffer not INDEX', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.VERTEX});
+      const pass = await createRenderPass(device);
+      expectValidationError(true, () => {
+        pass.setIndexBuffer(buffer, 'uint16');
       });
     });
 

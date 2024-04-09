@@ -15,6 +15,20 @@ function assert(condition: boolean, msg?: string | (() => string)): asserts cond
   }
 }
 
+function bitmaskToString(bitNames: Record<string, number>, mask: number) {
+  const names = [];
+  for (const [k, v] of Object.entries(bitNames)) {
+    if (mask & v) {
+      names.push(k);
+    }
+  }
+  return names.join('|');
+}
+
+function bufferUsageToString(mask: number) {
+  return bitmaskToString(GPUBufferUsage as unknown as Record<string, number>, mask);
+}
+
 function getFilterForGPUError(error: GPUError): GPUErrorFilter {
   if (error instanceof GPUValidationError) {
     return 'validation';
@@ -168,12 +182,8 @@ type RenderPassInfo = PassInfo & {
   targetHeight: number,
   pipeline?: GPURenderPipeline,
   indexBuffer?: BufferWithOffsetAndSize,
+  indexFormat?: GPUIndexFormat,
   vertexBuffers: (BufferWithOffsetAndSize | undefined)[],
-};
-
-type PassState = {
-  bindGroups: (GPUBindGroup | null | undefined)[],
-  pipeline: GPUPipelineBase | null | undefined,
 };
 
 type PassEncoder = GPURenderPassEncoder | GPUComputePassEncoder | GPURenderBundleEncoder;
@@ -404,6 +414,26 @@ wrapFunctionAfter(GPUCommandEncoder, 'beginRenderPass', function(this: GPUComman
   });
 });
 
+wrapFunctionBefore(GPURenderPassEncoder, 'setIndexBuffer', function(this: GPURenderPassEncoder, [buffer, format, offset, size]) {
+  const info = s_renderPassToPassInfoMap.get(this)!;
+  const device = s_objToDevice.get(info.commandEncoder)!;
+  offset = offset ?? 0;
+  size = size ?? Math.max(0, buffer.size - offset);
+
+  assert(device === s_objToDevice.get(buffer), 'buffer must be from the same device');
+  assert(!!(buffer.usage & GPUBufferUsage.INDEX), () => `buffer(${bufferUsageToString(buffer.usage)}) must have usage INDEX`);
+  const align =  format === 'uint16' ? 2 : 4;
+  assert(offset % align === 0, () => `offset(${offset}) must be multiple of index format: ${format}`);
+  assert(offset + size <= buffer.size, () => `offset(${offset}) + size(${size}) is not <= buffer.size(${buffer.size})`);
+
+  info.indexBuffer = {
+    buffer,
+    offset,
+    size,
+  };
+  info.indexFormat = format;
+});
+
 wrapFunctionBefore(GPURenderPassEncoder, 'setVertexBuffer', function(this: GPURenderPassEncoder, [slot, buffer, offset, size]) {
   const info = s_renderPassToPassInfoMap.get(this)!;
   const device = s_objToDevice.get(info.commandEncoder)!;
@@ -411,15 +441,15 @@ wrapFunctionBefore(GPURenderPassEncoder, 'setVertexBuffer', function(this: GPURe
   const bufferSize = buffer?.size || 0;
   offset = offset ?? 0;
   size = size ?? Math.max(0, bufferSize - offset);
-  assert(slot >= 0, 'slot must be >= 0');
-  assert(slot < maxSlot, 'slot must be < maxVertexBuffers');
-  assert(offset % 4 === 0, 'offset must be multiple of 4');
-  assert(offset + size <= bufferSize, 'offset + size is not <= buffer.size');
+  assert(slot >= 0, () => `slot(${slot}) must be >= 0`);
+  assert(slot < maxSlot, () => `slot(${slot}) must be < device.limits.maxVertexBuffers(${maxSlot})`);
+  assert(offset % 4 === 0, () => `offset(${offset}) must be multiple of 4`);
+  assert(offset + size <= bufferSize, () => `offset(${offset}) + size(${size}) is not <= buffer.size(${bufferSize})`);
   if (!buffer) {
     info.vertexBuffers[slot] = undefined;
   } else {
     assert(device === s_objToDevice.get(buffer), 'buffer must be from the same device');
-    assert(!!(buffer.usage & GPUBufferUsage.VERTEX), 'buffer must have usage VERTEX');
+    assert(!!(buffer.usage & GPUBufferUsage.VERTEX), () => `buffer(${bufferUsageToString(buffer.usage)}) must have usage VERTEX`);
     info.vertexBuffers[slot] = {
       buffer,
       offset,
@@ -433,10 +463,10 @@ wrapFunctionBefore(GPURenderPassEncoder, 'setViewport', function(this: GPURender
     targetWidth,
     targetHeight,
   } = s_renderPassToPassInfoMap.get(this)!;
-  assert(x >= 0, 'x < 0');
-  assert(y >= 0, 'y < 0');
-  assert(x + width <= targetWidth, 'x + width > texture.width');
-  assert(y + height <= targetHeight, 'y + height > texture.height');
+  assert(x >= 0, () => `x(${x}) < 0`);
+  assert(y >= 0, () => `y(${y}) < 0`);
+  assert(x + width <= targetWidth, () => `x(${x}) + width(${width}) > texture.width(${targetWidth})`);
+  assert(y + height <= targetHeight, () => `y(${x}) + height(${height}) > texture.height(${targetHeight})`);
 });
 
 wrapFunctionBefore(GPURenderPassEncoder, 'setScissorRect', function(this: GPURenderPassEncoder, [x, y, width, height]: [number, number, number, number]) {
@@ -444,8 +474,8 @@ wrapFunctionBefore(GPURenderPassEncoder, 'setScissorRect', function(this: GPURen
     targetWidth,
     targetHeight,
   } = s_renderPassToPassInfoMap.get(this)!;
-  assert(x >= 0, 'x < 0');
-  assert(y >= 0, 'y < 0');
-  assert(x + width <= targetWidth, 'x + width > texture.width');
-  assert(y + height <= targetHeight, 'y + height > texture.height');
+  assert(x >= 0, () => `x(${x}) < 0`);
+  assert(y >= 0, () => `y(${y}) < 0`);
+  assert(x + width <= targetWidth, () => `x(${x}) + width(${width}) > texture.width(${targetWidth})`);
+  assert(y + height <= targetHeight, () => `y(${x}) + height(${height}) > texture.height(${targetHeight})`);
 });
