@@ -126,32 +126,32 @@ GPUAdapter.prototype.requestDevice = (function(origFn) {
   }
 })(GPUAdapter.prototype.requestDevice);
 
-function wrapFunctionBefore<K extends PropertyKey, T extends Record<K, (...args: any[]) => any>>(
+function wrapFunctionBefore<K extends PropertyKey, T extends Record<K, (...args: Parameters<T[K]>) => any>>(
     API: { prototype: T },
     fnName: K, fn: (args: Parameters<T[K]>) => void) {
   const origFn = API.prototype[fnName];
-  API.prototype[fnName] = function (this: T, ...args: any[]) {
+  API.prototype[fnName] = function (this: T, ...args: Parameters<T[K]>) {
     fn.call(this, args);
     return origFn.call(this, ...args);
   } as any;
 }
 
-function wrapFunctionAfter<K extends PropertyKey, T extends Record<K, (...args: any[]) => any>>(
+function wrapFunctionAfter<K extends PropertyKey, T extends Record<K, (...args: Parameters<T[K]>) => any>>(
     API: { prototype: T },
     fnName: K, fn: (obj: ReturnType<T[K]>, args: Parameters<T[K]>) => void) {
   const origFn = API.prototype[fnName];
-  API.prototype[fnName] = function (this: T, ...args: any[]) {
+  API.prototype[fnName] = function (this: T, ...args: Parameters<T[K]>) {
     const result = origFn.call(this, ...args);
     fn.call(this, result, args);
     return result;
   } as any;
 }
 
-function wrapAsyncFunctionAfter<K extends PropertyKey, T extends Record<K, (...args: any[]) => any>>(
+function wrapAsyncFunctionAfter<K extends PropertyKey, T extends Record<K, (...args: Parameters<T[K]>) => any>>(
     API: { prototype: T },
     fnName: K, fn: (obj: Awaited<ReturnType<T[K]>>, args: Parameters<T[K]>) => void) {
   const origFn = API.prototype[fnName];
-  API.prototype[fnName] = async function (this: T, ...args: any[]) {
+  API.prototype[fnName] = async function (this: T, ...args: Parameters<T[K]>) {
     const result = await origFn.call(this, ...args);
     fn.call(this, result, args);
     return result;
@@ -218,7 +218,7 @@ const s_pipelineLayoutToPipelineLayoutDescriptor = new WeakMap<GPUPipelineLayout
 
 function addDefs(defs: ShaderDataDefinitions[], stage: GPUProgrammableStage | undefined) {
   if (stage) {
-    defs.push(s_shaderModuleToDefs.get(stage.module));
+    defs.push(s_shaderModuleToDefs.get(stage.module)!);
   }
 }
 
@@ -236,11 +236,11 @@ function trackPipelineLayouts(device: GPUDevice, pipeline: GPUPipelineBase, desc
     }
 }
 
-function trackAutoLayoutPipelineBindGroupLayouts(pipeline, layout) {
-  if (s_pipelineToRequiredGroupIndices.has(pipeline)) {
-    s_layoutToAutoLayoutPipeline.set(layout, pipeline);
-  }
-}
+// function trackAutoLayoutPipelineBindGroupLayouts(pipeline, layout) {
+//   if (s_pipelineToRequiredGroupIndices.has(pipeline)) {
+//     s_layoutToAutoLayoutPipeline.set(layout, pipeline);
+//   }
+// }
 
 function trackPipelineLayout(this: GPUDevice, pipelineLayout: GPUPipelineLayout, [desc]: [GPUPipelineLayoutDescriptor]) {
   s_pipelineLayoutToPipelineLayoutDescriptor.set(pipelineLayout, desc);
@@ -251,7 +251,7 @@ function trackBindGroupLayout(this: GPUDevice, bindGroupLayout: GPUBindGroupLayo
 }
 
 function setBindGroup(parent: GPUCommandEncoder, bindGroupBindings: BindGroupBinding[], index: number, bindGroup: GPUBindGroup | null | undefined, dynamicOffsets?: Uint32Array) {
-  const device = s_objToDevice.get(parent);
+  const device = s_objToDevice.get(parent)!;
   const maxIndex = device.limits.maxBindGroups;
   assert(index >= 0, () => `index(${index}) must be >= 0`);
   assert(index < maxIndex, () => `index(${index}) must be < device.limits.maxBindGroups(${maxIndex})`);
@@ -267,7 +267,9 @@ function setBindGroup(parent: GPUCommandEncoder, bindGroupBindings: BindGroupBin
       dynamicOffsets,
     };
   } else {
-    bindGroupBindings[index] = undefined;
+    bindGroupBindings[index] = {
+      bindGroup: undefined,
+    };
   }
 }
 
