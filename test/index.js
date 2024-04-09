@@ -1,4 +1,7 @@
 /* global mocha */
+import './tests/command-encoder-tests.js';
+import './tests/compute-pass-tests.js';
+import './tests/render-pass-tests.js';
 import './tests/webgpu-debug-helper-tests.js';
 
 const settings = Object.fromEntries(new URLSearchParams(window.location.search).entries());

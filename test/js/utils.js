@@ -21,3 +21,21 @@ function restoreFunctionsOfClasses(savedClasses) {
     restoreFunctionsOfClass(c.prototype, savedFuncs);
   }
 }
+
+export function expectValidationError(expectError, fn) {
+  let error = false;
+  try {
+    fn();
+  } catch (e) {
+    error = e;
+  }
+  if (expectError) {
+    if (!error) {
+      throw new Error('expected error, no error thrown');
+    }
+  } else {
+    if (error) {
+      throw error;
+    }
+  }
+}
