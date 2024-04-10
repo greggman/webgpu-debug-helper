@@ -145,6 +145,63 @@ describe('test render pass encoder', () => {
       });
     });
 
+    it('errors when colorAttachments are destroyed', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const textures = [3, 3].map(width => device.createTexture({
+        size: [width, 3],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+      }));
+      textures[1].destroy();
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: textures.map(texture => ({
+            view: texture.createView(),
+            clearColor: [0, 0, 0, 0],
+            loadOp: 'clear',
+            storeOp: 'store',
+          })),
+        });
+      });
+
+    });
+
+    it('errors when depthStencilAttachment is destroyed', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const colorTexture = device.createTexture({
+        size: [2, 2],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+      });
+      const depthTexture = device.createTexture({
+        size: [2, 2],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'depth24plus',
+      });
+      depthTexture.destroy();
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: [{
+            view: colorTexture.createView(),
+            clearColor: [0, 0, 0, 0],
+            loadOp: 'clear',
+            storeOp: 'store',
+          }],
+          depthStencilAttachment: {
+            view: depthTexture.createView(),
+            depthClearValue: 1.0,
+            depthLoadOp: 'clear',
+            depthStoreOp: 'store',
+          },
+        });
+      });
+    });
+
+
   });
 
   describe('check errors on setViewport', () => {
@@ -298,6 +355,16 @@ describe('test render pass encoder', () => {
       });
     });
 
+    it('errors if buffer is destroyed', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass(device);
+      const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.VERTEX});
+      buffer.destroy();
+      await expectValidationError(true, () => {
+        pass.setVertexBuffer(0, buffer);
+      });
+    });
+
     it('slot < 0', async () => {
       const pass = await createRenderPass();
       await expectValidationError(true, () => {
@@ -374,6 +441,16 @@ describe('test render pass encoder', () => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
       const pass = await createRenderPass(device);
       await expectValidationError(false, () => {
+        pass.setIndexBuffer(buffer, 'uint16');
+      });
+    });
+
+    it('errors if buffer is destroyed', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
+      buffer.destroy();
+      const pass = await createRenderPass(device);
+      await expectValidationError(true, () => {
         pass.setIndexBuffer(buffer, 'uint16');
       });
     });
