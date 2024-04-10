@@ -1,5 +1,5 @@
 import {
-  openCommandEncoder,
+  unlockCommandEncoder,
   PassInfo,
   setBindGroup,
   validateEncoderState
@@ -113,7 +113,7 @@ wrapFunctionBefore(GPURenderPassEncoder, 'end', function(this: GPURenderPassEnco
   const info = s_renderPassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   info.state = 'ended';
-  openCommandEncoder(info.commandEncoder)!;
+  unlockCommandEncoder(info.commandEncoder)!;
 });
 
 wrapFunctionBefore(GPURenderPassEncoder, 'setIndexBuffer', function(this: GPURenderPassEncoder, [buffer, format, offset, size]) {

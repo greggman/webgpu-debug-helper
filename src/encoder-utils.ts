@@ -32,21 +32,24 @@ export function createCommandEncoder(commandEncoder: GPUCommandEncoder) {
   s_commandEncoderToInfoMap.set(commandEncoder, { state: 'open' });
 }
 
-export function openCommandEncoder(commandEncoder: GPUCommandEncoder) {
-  const cmdEncoderInfo = s_commandEncoderToInfoMap.get(commandEncoder)!;
-  cmdEncoderInfo.state = 'open';
+export function unlockCommandEncoder(commandEncoder: GPUCommandEncoder) {
+  const info = s_commandEncoderToInfoMap.get(commandEncoder)!;
+  assert(info.state === 'locked');
+  info.state = 'open';
 }
 
 export function lockCommandEncoder(commandEncoder: GPUCommandEncoder) {
-  const info = s_commandEncoderToInfoMap.get(commandEncoder)!
-  validateEncoderState(commandEncoder, info.state);
-  info.state = 'locked';
+  getCommandBufferInfoAndValidateState(commandEncoder).state = 'locked';
 }
 
 export function finishCommandEncoder(commandEncoder: GPUCommandEncoder) {
+  getCommandBufferInfoAndValidateState(commandEncoder).state = 'ended';
+}
+
+export function getCommandBufferInfoAndValidateState(commandEncoder: GPUCommandEncoder) {
   const info = s_commandEncoderToInfoMap.get(commandEncoder)!
   validateEncoderState(commandEncoder, info.state);
-  info.state = 'ended';
+  return info;
 }
 
 export function validateBindGroupResourcesNotDestroyed(entries: GPUBindGroupEntry[]) {

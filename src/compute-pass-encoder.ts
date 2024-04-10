@@ -1,5 +1,5 @@
 import {
-  openCommandEncoder,
+  unlockCommandEncoder,
   PassInfo,
   setBindGroup,
   validateEncoderState
@@ -45,7 +45,7 @@ wrapFunctionBefore(GPUComputePassEncoder, 'end', function(this: GPUComputePassEn
   const info = s_computePassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   info.state = 'ended';
-  openCommandEncoder(info.commandEncoder);
+  unlockCommandEncoder(info.commandEncoder);
 });
 
 //wrapFunctionAfter(GPUComputePassEncoder, 'dispatchWorkgroups', validateBindGroups);
