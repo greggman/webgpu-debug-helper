@@ -58,12 +58,33 @@ async function createBindGroup(device) {
 
 describe('test compute pass encoder', () => {
 
+ describe('check errors on beginComputePass', () => {
+
+    it('errors if 2 passes are started', async() => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const encoder = await createCommandEncoder(device);
+      const pass1 = await createComputePass(device, encoder);
+      await expectValidationError(true, async () => {
+        const pass2 = await createComputePass(device, encoder);
+      });
+    });
+
+    it('can not end twice', async () => {
+      const pass = await createComputePass();
+      pass.end();
+      await expectValidationError(true, async () => {
+        pass.end();
+      });
+    });
+
+  });
+
   describe('check errors on setPipeline', () => {
 
     it('pipeline from different device', async () => {
       const pipeline = await createComputePipeline();
       const pass = await createComputePass();
-      expectValidationError(true, () => {
+      await expectValidationError(true, () => {
         pass.setPipeline(pipeline);
       });
     });
@@ -73,10 +94,10 @@ describe('test compute pass encoder', () => {
       const pipeline = await createComputePipeline(device);
       const pass = await createComputePass(device);
       pass.end();
-      expectValidationError(true, () => {
+      await expectValidationError(true, () => {
         pass.setPipeline(pipeline);
       });
-    })
+    });
 
   });
 
@@ -86,7 +107,7 @@ describe('test compute pass encoder', () => {
       const device = await (await navigator.gpu.requestAdapter()).requestDevice();
       const pass = await createComputePass(device);
       const bindGroup = await createBindGroup(device);
-      expectValidationError(false, () => {
+      await expectValidationError(false, () => {
         pass.setBindGroup(0, bindGroup);
       });
     });
@@ -96,7 +117,7 @@ describe('test compute pass encoder', () => {
       const pass = await createComputePass(device);
       const bindGroup = await createBindGroup(device);
       pass.end();
-      expectValidationError(true, () => {
+      await expectValidationError(true, () => {
         pass.setBindGroup(0, bindGroup);
       });
     })
@@ -104,7 +125,7 @@ describe('test compute pass encoder', () => {
     it('bindGroup from different device', async () => {
       const pass = await createComputePass();
       const bindGroup = await createBindGroup();
-      expectValidationError(true, () => {
+      await expectValidationError(true, () => {
         pass.setBindGroup(0, bindGroup);
       });
     });
@@ -113,7 +134,7 @@ describe('test compute pass encoder', () => {
       const device = await (await navigator.gpu.requestAdapter()).requestDevice();
       const pass = await createComputePass(device);
       const bindGroup = await createBindGroup(device);
-      expectValidationError(true, () => {
+      await expectValidationError(true, () => {
         pass.setBindGroup(-1, bindGroup);
       });
     });
@@ -122,7 +143,7 @@ describe('test compute pass encoder', () => {
       const device = await (await navigator.gpu.requestAdapter()).requestDevice();
       const pass = await createComputePass(device);
       const bindGroup = await createBindGroup(device);
-      expectValidationError(true, () => {
+      await expectValidationError(true, () => {
         pass.setBindGroup(device.limits.maxBindGroups, bindGroup);
       });
     });

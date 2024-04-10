@@ -22,10 +22,10 @@ function restoreFunctionsOfClasses(savedClasses) {
   }
 }
 
-export function expectValidationError(expectError, fn) {
+export async function expectValidationError(expectError, fn) {
   let error = false;
   try {
-    fn();
+    await fn();
   } catch (e) {
     error = e;
   }
