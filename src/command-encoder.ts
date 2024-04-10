@@ -10,6 +10,7 @@ import {
 } from './render-pass-encoder.js';
 import {
   wrapFunctionAfter,
+  wrapFunctionBefore,
 } from './wrap-api.js';
 
 wrapFunctionAfter(GPUCommandEncoder, 'beginComputePass', function(this: GPUCommandEncoder, passEncoder: GPUComputePassEncoder, [desc]) {
@@ -22,7 +23,7 @@ wrapFunctionAfter(GPUCommandEncoder, 'beginRenderPass', function(this: GPUComman
   beginRenderPass(this, passEncoder, desc);
 });
 
-wrapFunctionAfter(GPUCommandEncoder, 'finish', function(this: GPUCommandEncoder, commandBuffer: GPUCommandBuffer) {
+wrapFunctionBefore(GPUCommandEncoder, 'finish', function(this: GPUCommandEncoder) {
   finishCommandEncoder(this);
 });
 

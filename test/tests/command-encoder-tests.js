@@ -27,6 +27,14 @@ describe('test command encoder', () => {
       });
     });
 
+    it('can not finish if locked', async () => {
+      const encoder = await createCommandEncoder();
+      const pass = encoder.beginComputePass();
+      await expectValidationError(true, async () => {
+        encoder.finish();
+      });
+    });
+
   });
 
 });

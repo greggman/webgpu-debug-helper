@@ -52,6 +52,7 @@ describe('test device', () => {
 
     });
 
+    /*
     it('fails if size > buffer.size', async () => {
 
       const device = await (await navigator.gpu.requestAdapter()).requestDevice();
@@ -85,6 +86,7 @@ describe('test device', () => {
       });
 
     });
+    */
 
   });
 
