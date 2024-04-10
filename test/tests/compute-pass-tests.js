@@ -10,9 +10,13 @@ import {
 import {describe, it, beforeEach, afterEach} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
 
-async function createComputePass(device) {
+async function createCommandEncoder(device) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
-  const encoder = device.createCommandEncoder();
+  return device.createCommandEncoder();
+}
+
+async function createComputePass(device, encoder) {
+  encoder = encoder || await createCommandEncoder(device);
   const pass = encoder.beginComputePass();
   return pass;
 }
@@ -64,6 +68,16 @@ describe('test compute pass encoder', () => {
       });
     });
 
+    it('fails if ended', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pipeline = await createComputePipeline(device);
+      const pass = await createComputePass(device);
+      pass.end();
+      expectValidationError(true, () => {
+        pass.setPipeline(pipeline);
+      });
+    })
+
   });
 
   describe('check errors on setBindGroup', () => {
@@ -76,6 +90,16 @@ describe('test compute pass encoder', () => {
         pass.setBindGroup(0, bindGroup);
       });
     });
+
+    it('fails if ended', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createComputePass(device);
+      const bindGroup = await createBindGroup(device);
+      pass.end();
+      expectValidationError(true, () => {
+        pass.setBindGroup(0, bindGroup);
+      });
+    })
 
     it('bindGroup from different device', async () => {
       const pass = await createComputePass();

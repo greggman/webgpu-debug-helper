@@ -129,6 +129,7 @@ describe('test render pass encoder', () => {
 
     const tests = [
       { success: true, args: [0, 0, 2, 3, 0, 1], desc: 'valid' },
+      { success: false, args: [0, 0, 2, 3, 0, 1], desc: 'pass ended', end: true },
       { success: false, args: [-1, 0, 1, 1, 0, 1], desc: 'x < 0' },
       { success: false, args: [ 0, -1, 1, 1, 0, 1], desc: 'y < 0' },
       { success: false, args: [ 0, 0, 3, 1, 0, 1], desc: 'x + width > targetWidth' },
@@ -137,14 +138,16 @@ describe('test render pass encoder', () => {
       { success: false, args: [ 0, 1, 1, 3, 0, 1], desc: 'y + height > targetHeight' },
     ];
 
-    for (let {success, args, desc} of tests) {
+    for (let {success, args, desc, end} of tests) {
       it(desc, async () => {
         const pass = await createRenderPass();
-          expectValidationError(!success, () => {
-            pass.setViewport(...args);
-          });
+        if (end) {
+          pass.end();
+        }
+        expectValidationError(!success, () => {
+          pass.setViewport(...args);
+        });
       });
-
     }
 
   });
@@ -153,6 +156,7 @@ describe('test render pass encoder', () => {
 
     const tests = [
       { success: true, args: [0, 0, 2, 3, 0, 1], desc: 'valid' },
+      { success: false, args: [0, 0, 2, 3, 0, 1], desc: 'valid', end: true },
       { success: false, args: [-1, 0, 1, 1, 0, 1], desc: 'x < 0' },
       { success: false, args: [ 0, -1, 1, 1, 0, 1], desc: 'y < 0' },
       { success: false, args: [ 0, 0, 3, 1, 0, 1], desc: 'x + width > targetWidth' },
@@ -161,14 +165,16 @@ describe('test render pass encoder', () => {
       { success: false, args: [ 0, 1, 1, 3, 0, 1], desc: 'y + height > targetHeight' },
     ];
 
-    for (let {success, args, desc} of tests) {
+    for (let {success, args, desc, end} of tests) {
       it(desc, async () => {
         const pass = await createRenderPass();
-          expectValidationError(!success, () => {
-            pass.setViewport(...args);
-          });
+        if (end) {
+          pass.end();
+        }
+        expectValidationError(!success, () => {
+          pass.setViewport(...args);
+        });
       });
-
     }
 
   });
@@ -178,6 +184,16 @@ describe('test render pass encoder', () => {
     it('pipeline from different device', async () => {
       const pipeline = await createRenderPipeline();
       const pass = await createRenderPass();
+      expectValidationError(true, () => {
+        pass.setPipeline(pipeline);
+      });
+    });
+
+    it('fails if ended', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pipeline = await createRenderPipeline(device);
+      const pass = await createRenderPass(device);
+      pass.end();
       expectValidationError(true, () => {
         pass.setPipeline(pipeline);
       });
@@ -195,6 +211,16 @@ describe('test render pass encoder', () => {
         pass.setBindGroup(0, bindGroup);
       });
     });
+
+    it('fails if ended', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass(device);
+      const bindGroup = await createBindGroup(device);
+      pass.end();
+      expectValidationError(true, () => {
+        pass.setBindGroup(0, bindGroup);
+      });
+    })
 
     it('bindGroup from different device', async () => {
       const pass = await createRenderPass();
@@ -229,6 +255,14 @@ describe('test render pass encoder', () => {
     it('works with null', async () => {
       const pass = await createRenderPass();
       expectValidationError(false, () => {
+        pass.setVertexBuffer(0, null);
+      });
+    });
+
+    it('fails with null if ended', async () => {
+      const pass = await createRenderPass();
+      pass.end();
+      expectValidationError(true, () => {
         pass.setVertexBuffer(0, null);
       });
     });
@@ -318,6 +352,16 @@ describe('test render pass encoder', () => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
       const pass = await createRenderPass(device);
       expectValidationError(false, () => {
+        pass.setIndexBuffer(buffer, 'uint16');
+      });
+    });
+
+    it('fails if ended', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
+      const pass = await createRenderPass(device);
+      pass.end();
+      expectValidationError(true, () => {
         pass.setIndexBuffer(buffer, 'uint16');
       });
     });
