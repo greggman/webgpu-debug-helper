@@ -50,7 +50,7 @@ async function createRenderPipeline(device) {
   return pipeline;
 }
 
-async function createBindGroup(device) {
+async function createBindGroup(device, buffer) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
   const bindGroupLayout = device.createBindGroupLayout({
     entries: [
@@ -61,7 +61,7 @@ async function createBindGroup(device) {
       },
     ],
   });
-  const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
+  buffer = buffer || device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
   const bindGroup = device.createBindGroup({
     layout: bindGroupLayout,
     entries: [
@@ -324,6 +324,17 @@ describe('test render pass encoder', () => {
       const bindGroup = await createBindGroup(device);
       await expectValidationError(true, () => {
         pass.setBindGroup(device.limits.maxBindGroups, bindGroup);
+      });
+    });
+
+    it('fails if buffer destroyed', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass(device);
+      const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
+      const bindGroup = await createBindGroup(device, buffer);
+      buffer.destroy();
+      await expectValidationError(true, () => {
+        pass.setBindGroup(0, bindGroup);
       });
     });
 

@@ -1,6 +1,9 @@
 import {
+  assertNotDestroyed,
+  s_bindGroupToInfo,
   s_objToDevice,
 } from './shared-state.js';
+import { s_textureViewToTexture } from './texture.js';
 import {
   assert
 } from './validation.js';type EncoderState = 'open' | 'locked' | 'ended';
@@ -46,6 +49,21 @@ export function finishCommandEncoder(commandEncoder: GPUCommandEncoder) {
   info.state = 'ended';
 }
 
+export function validateBindGroupResourcesNotDestroyed(entries: GPUBindGroupEntry[]) {
+ for (const {resource} of entries) {
+    if (resource instanceof GPUTextureView) {
+      const texture = s_textureViewToTexture.get(resource)!;
+      assertNotDestroyed(texture);
+    } else {
+      const asBufferBinding = resource as GPUBufferBinding;
+      const buffer = asBufferBinding.buffer;
+      if (buffer instanceof GPUBuffer) {
+        assertNotDestroyed(buffer);
+      }
+    }
+  }
+}
+
 export function setBindGroup(parent: GPUCommandEncoder, bindGroupBindings: BindGroupBinding[], index: number, bindGroup: GPUBindGroup | null | undefined, dynamicOffsets?: Uint32Array) {
   const device = s_objToDevice.get(parent)!;
   const maxIndex = device.limits.maxBindGroups;
@@ -57,6 +75,11 @@ export function setBindGroup(parent: GPUCommandEncoder, bindGroupBindings: BindG
   assert(dynamicOffsets.length === dynamicOffsetCount, `there must be the same number of dynamicOffsets(${dynamicOffsets.length}) as the layout requires (${dynamicOffsetCount})`)
   if (bindGroup) {
     assert(device === s_objToDevice.get(bindGroup), () => `bindGroup must be from same device as ${parent.constructor.name}`, [bindGroup, parent]);
+
+    // Validate resources are not destroyed
+    const info = s_bindGroupToInfo.get(bindGroup)!
+    validateBindGroupResourcesNotDestroyed(info.desc.entries);
+
     // TODO: Validate Dynamic Offsets
     bindGroupBindings[index] = {
       bindGroup,

@@ -1,6 +1,7 @@
 /* global mocha */
 import './tests/command-encoder-tests.js';
 import './tests/compute-pass-tests.js';
+import './tests/device-tests.js';
 import './tests/render-pass-tests.js';
 import './tests/webgpu-debug-helper-tests.js';
 

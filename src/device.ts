@@ -7,11 +7,16 @@ import {
 
 import {
   createCommandEncoder,
+  validateBindGroupResourcesNotDestroyed,
 } from './encoder-utils.js';
 import {
   assertNotDestroyed,
+  s_bindGroupToInfo,
   s_objToDevice,
 } from './shared-state.js';
+import {
+  assert
+} from './validation.js';
 import {
   wrapFunctionAfter,
   wrapAsyncFunctionAfter,
@@ -20,7 +25,6 @@ import {
 const s_shaderModuleToDefs = new WeakMap<GPUShaderModule, ShaderDataDefinitions>();
 const s_pipelineToRequiredGroupIndices = new WeakMap<GPUPipelineBase, number[]>();
 const s_layoutToAutoLayoutPipeline = new WeakMap<GPUBindGroupLayout, GPUPipelineBase>();
-const s_bindGroupToLayout = new WeakMap<GPUBindGroup, GPUBindGroupLayout>();
 
 const s_bindGroupLayoutToBindGroupLayoutDescriptor = new WeakMap<GPUBindGroupLayout, GPUBindGroupLayoutDescriptor>();
 const s_pipelineLayoutToPipelineLayoutDescriptor = new WeakMap<GPUPipelineLayout, GPUPipelineLayoutDescriptor>();
@@ -68,6 +72,30 @@ wrapFunctionAfter(GPUDevice, 'createShaderModule', function(this: GPUDevice, mod
 wrapFunctionAfter(GPUDevice, 'createBindGroup', function(this: GPUDevice, bindGroup: GPUBindGroup, [desc]: [GPUBindGroupDescriptor]) {
   s_objToDevice.set(bindGroup, this);
   const { layout } = desc;
+  // copy the entries since the user might change them
+  const entries = [];
+  for (const {binding, resource} of [...desc.entries]) {
+    const r = resource instanceof GPUSampler ||
+              resource instanceof GPUTextureView ||
+              resource instanceof GPUExternalTexture
+        ? resource
+        : { ...resource };
+    const rb = r as GPUBufferBinding;
+    if (rb.buffer instanceof GPUBuffer) {
+      const offset = rb.offset || 0;
+      const size = rb.size || rb.buffer.size - offset;
+      assert(offset + size <= rb.buffer.size, () => `offset(${offset} + size(${size}) > buffer.size(${rb.buffer.size}))`, [rb.buffer]);
+    }
+    entries.push({
+      binding,
+      resource: r,
+    });
+  }
+  validateBindGroupResourcesNotDestroyed(entries);
+  s_bindGroupToInfo.set(bindGroup, {
+    //layout: null,
+    desc: { layout, entries },
+  });
   const pipeline = s_layoutToAutoLayoutPipeline.get(layout);
   if (pipeline) {
     if (s_pipelineToRequiredGroupIndices.has(pipeline)) {
@@ -77,36 +105,43 @@ wrapFunctionAfter(GPUDevice, 'createBindGroup', function(this: GPUDevice, bindGr
 });
 
 wrapFunctionAfter(GPUDevice, 'createBuffer', function(this: GPUDevice, buffer: GPUBuffer, [desc]) {
+  assertNotDestroyed(this);
   s_objToDevice.set(buffer, this);
 });
 
 wrapFunctionAfter(GPUDevice, 'createTexture', function(this: GPUDevice, texture: GPUTexture, [desc]) {
+  assertNotDestroyed(this);
   s_objToDevice.set(texture, this);
 });
 
 wrapFunctionAfter(GPUDevice, 'createCommandEncoder', function(this: GPUDevice, commandEncoder: GPUCommandEncoder, [desc]) {
+  assertNotDestroyed(this);
   s_objToDevice.set(commandEncoder, this);
   createCommandEncoder(commandEncoder);
 });
 
 wrapFunctionAfter(GPUDevice, 'createRenderPipeline', function(this: GPUDevice, pipeline: GPURenderPipeline, [desc]) {
+  assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
   s_renderPipelineToRenderPipelineDescriptor.set(pipeline, desc);
   trackPipelineLayouts(this, pipeline, desc);
 });
 
 wrapFunctionAfter(GPUDevice, 'createComputePipeline', function(this: GPUDevice, pipeline: GPUComputePipeline, [desc]) {
+  assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
   trackPipelineLayouts(this, pipeline, desc);
 });
 
 wrapAsyncFunctionAfter(GPUDevice, 'createRenderPipelineAsync', function(this: GPUDevice, pipeline: GPURenderPipeline, [desc]) {
+  assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
   s_renderPipelineToRenderPipelineDescriptor.set(pipeline, desc);
   trackPipelineLayouts(this, pipeline, desc);
 });
 
 wrapAsyncFunctionAfter(GPUDevice, 'createComputePipelineAsync', function(this: GPUDevice, pipeline: GPUComputePipeline, [desc]) {
+  assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
   trackPipelineLayouts(this, pipeline, desc);
 });

@@ -30,4 +30,3 @@ export function assert(condition: boolean, msg?: string | (() => string), resour
     emitError(`${m}${lines ? `\n${lines}`: ''}`);
   }
 }
-

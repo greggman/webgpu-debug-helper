@@ -42,3 +42,15 @@ wrapFunctionBefore(GPUDevice, 'destroy', function(this: GPUDevice) {
   s_destroyedResource.add(this);
 });
 
+// Used because GPUBindGroupDescriptor is sequence, not array
+export type BindGroupDescriptor = {
+  layout: GPUBindGroupLayout,
+  entries: GPUBindGroupEntry[],
+};
+
+export type BindGroupInfo = {
+  //layout: GPUBindGroupLayout | null,
+  desc: BindGroupDescriptor,
+};
+
+export const s_bindGroupToInfo = new WeakMap<GPUBindGroup, BindGroupInfo>();
