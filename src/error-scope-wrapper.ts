@@ -31,6 +31,9 @@ interface ThingWithPrototype<T> extends Object {
   prototype: Record<string, any>;
 };
 
+/**
+ * Given a class and a function name adds a push/popErrorScope wrapper.
+ */
 function addErrorWrapper<T>(api: ThingWithPrototype<T>, fnName: string) {
   const origFn = api.prototype[fnName];
   api.prototype[fnName] = function(this: T, ...args: any[]) {
@@ -50,6 +53,9 @@ function addErrorWrapper<T>(api: ThingWithPrototype<T>, fnName: string) {
   }
 }
 
+/**
+ * given a class returns all the method names.
+ */
 function getAPIFunctionNames<T>(api: ThingWithPrototype<T>) {
   return Object.entries(Object.getOwnPropertyDescriptors(api.prototype))
      .filter(([, info]) => info.enumerable && typeof info.value === 'function')
