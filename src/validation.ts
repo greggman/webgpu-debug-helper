@@ -1,3 +1,7 @@
+import {
+  bufferUsageToString,
+  textureUsageToString,
+} from './utils.js';
 export type LabeledObject = 
   | GPUBindGroup
   | GPUBindGroupLayout
@@ -15,8 +19,25 @@ export type LabeledObject =
   | GPUTexture
   | GPUTextureView;
 
+function getProperties(o: any) {
+  const keyValues = [];
+  for (const k in o) {
+    const v = o[k];
+    if (typeof v !== 'function') {
+      if (o instanceof GPUBuffer && k === 'usage') {
+        keyValues.push(`${k}: ${v} (${bufferUsageToString(v)})`)
+      } else if (o instanceof GPUTexture && k === 'usage') {
+        keyValues.push(`${k}: ${v} (${textureUsageToString(v)})`)
+      } else {
+        keyValues.push(`${k}: ${JSON.stringify(v)}`);
+      }
+    }
+  }
+  return keyValues.join(', ');
+}
+
 export function objToString(o: LabeledObject) {
-  return `${o.constructor.name}(${o.label})`;
+  return `${o.constructor.name}(${o.label}){${getProperties(o)}}`;
 }
 
 export function emitError(msg: string, objs: LabeledObject[] = []) {
@@ -25,7 +46,7 @@ export function emitError(msg: string, objs: LabeledObject[] = []) {
 
 export function assert(condition: boolean, msg?: string | (() => string), resources?: any[]): asserts condition {
   if (!condition) {
-    const lines = (resources || []).map(r => `    ${r.constructor.name}${r.label ? `(${r.label})` :''}`).join('\n')
+    const lines = (resources || []).map(r => `    ${objToString(r)}`).join('\n')
     const m = msg ? (typeof msg === 'string' ? msg : msg()) : '';
     emitError(`${m}${lines ? `\n${lines}`: ''}`);
   }

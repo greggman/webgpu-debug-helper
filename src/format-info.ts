@@ -1,7 +1,3 @@
-// exported from the WebGPU CTS by adding the following line to src/webgpu/format_info.ts
-//
-//    console.log(JSON.stringify(kAllTextureFormatInfo, null, 2));
-
 export type DataInfo = {
   copySrc: boolean,
   copyDst: boolean,
@@ -43,6 +39,10 @@ export type FormatInfo = {
   baseFormat?: string,
   feature?: string,
 };
+
+// exported from the WebGPU CTS by adding the following line to src/webgpu/format_info.ts
+//
+//    console.log(JSON.stringify(kAllTextureFormatInfo, null, 2));
 
 export const kAllTextureFormatInfo: {[key: string]: FormatInfo} =  {
   "r8unorm": {

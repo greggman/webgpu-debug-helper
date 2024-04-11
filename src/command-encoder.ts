@@ -54,7 +54,7 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToBuffer', function(this: GPUCo
 function validateImageCopyBuffer(icb: GPUImageCopyBuffer) {
   assertNotDestroyed(icb.buffer);
   const bytesPerRow = icb.bytesPerRow || 0;
-  assert(icb.bytesPerRow % 256 === 0, () => `src.bytesPerRow(${bytesPerRow}) not multiple of 256`, [icb.buffer])
+  assert(bytesPerRow % 256 === 0, () => `src.bytesPerRow(${bytesPerRow}) not multiple of 256`, [icb.buffer])
 }
 
 function validateImageCopyTexture(ict: GPUImageCopyTexture, copySize: GPUExtent3D) {
@@ -67,7 +67,7 @@ function validateImageCopyTexture(ict: GPUImageCopyTexture, copySize: GPUExtent3
   } = formatInfo;
 
   const mipLevel = ict.mipLevel || 0;
-  const [origX, origY, origZ] = reifyGPUOrigin3D(ict.origin);
+  const [origX, origY] = reifyGPUOrigin3D(ict.origin);
   assert(mipLevel < ict.texture.mipLevelCount, () => `mipLevel(${mipLevel}) must be less than texture.mipLevelCount(${ict.texture.mipLevelCount})`, [ict.texture]);
   assert(origX % blockWidth === 0, () => `origin.x(${origX}) not multiple of blockWidth(${blockWidth})`, [ict.texture]);
   assert(origY % blockHeight === 0, () => `origin.y(${origY}) not multiple of blockHeight(${blockHeight})`, [ict.texture]);
@@ -80,7 +80,6 @@ function validateImageCopyTexture(ict: GPUImageCopyTexture, copySize: GPUExtent3
            copyHeight === h &&
            copyDepthOrArrayLayers === d, 'copySize must match textureSize for depth-stencil textures', [ict.texture]);
   }
-
 }
 
 function validateTextureCopyRange(ict: GPUImageCopyTexture, copySize: GPUExtent3D) {
@@ -94,46 +93,54 @@ function validateTextureCopyRange(ict: GPUImageCopyTexture, copySize: GPUExtent3
   const [copyWidth, copyHeight, copyDepthOrArrayLayers] = reifyGPUExtent3D(copySize);
   const [w, h, d] = physicalMipLevelSpecificTextureExtent(ict.texture, mipLevel);
 
-  assert(origX + copyWidth <= w);
-  assert(origY + copyHeight <= h);
-  assert(origZ + copyDepthOrArrayLayers <= d);
-  assert(w % blockWidth === 0);
-  assert(h % blockHeight === 0);
+  const res = [ict.texture];
+  assert(origX + copyWidth <= w, () => `origin.x(${origX}) + copySize.width(${copyWidth}) is > physical width(${w}) of mipLevel(${mipLevel})`, res);
+  assert(origY + copyHeight <= h, () => `origin.y(${origY}) + copySize.height(${copyHeight}) is > physical height(${h}) of mipLevel(${mipLevel})`, res);
+  assert(origZ + copyDepthOrArrayLayers <= d, () => `origin.z(${origZ}) + copySize.depthOrArrayBuffers(${copyDepthOrArrayLayers}) is > texture.depthOrArrayLayers(${d}) of mipLevel(${mipLevel})`, res);
+  assert(copyWidth % blockWidth === 0, () => `copySize.width(${copyWidth}) is not multiple of blockWidth(${blockWidth})`, res);
+  assert(copyHeight % blockHeight === 0, () => `copySize.height(${copyHeight}) is not multiple of blockHeight(${blockHeight})`, res);
 }
 
 function validateLinearTextureData(idl: GPUImageDataLayout, byteSize: number, format: GPUTextureFormat, copyExtent: GPUExtent3D) {
   const formatInfo = kAllTextureFormatInfo[format];
   const [copyWidth, copyHeight, copyDepthOrArrayLayers] = reifyGPUExtent3D(copyExtent);
-  const widthInBlocks = copyWidth / formatInfo.blockWidth;
-  const heightInBlocks = copyHeight / formatInfo.blockHeight;
+  const { blockWidth, blockHeight } = formatInfo;
+  const widthInBlocks = copyWidth / blockWidth;
+  const heightInBlocks = copyHeight / blockHeight;
   const bytesInLastRow = widthInBlocks * formatInfo.bytesPerBlock;
 
-  assert(widthInBlocks % 1 === 0);
-  assert(heightInBlocks % 1 === 0);
-  if (heightInBlocks > 1 || copyDepthOrArrayLayers > 1) {
-    assert(idl.bytesPerRow !== undefined)
+  assert(widthInBlocks % 1 === 0, () => `width(${copyWidth}) must be multiple of blockWidth${blockWidth}`);
+  assert(heightInBlocks % 1 === 0, () => `height(${copyHeight}) must be multiple of blockHeight${blockHeight}`);
+  if (heightInBlocks > 1) {
+    assert(idl.bytesPerRow !== undefined, () => `bytesPerRow must be set if heightInBlocks(${heightInBlocks}) > 1`);
+  }
+
+  if (copyDepthOrArrayLayers > 1) {
+    assert(idl.bytesPerRow !== undefined, () => `bytesPerRow must be set if copySize.depthOrArrayLayers(${copyDepthOrArrayLayers}) > 1`);
   }
   if (copyDepthOrArrayLayers > 1) {
-    idl.rowsPerImage !== undefined;
+    assert(idl.rowsPerImage !== undefined, () => `rowsPerImage must be set if copySize.depthOrArrayLayers(${copyDepthOrArrayLayers}) > 1`);
   }
   if (idl.bytesPerRow !== undefined) {
-    assert(idl.bytesPerRow >= bytesInLastRow)
+    assert(idl.bytesPerRow >= bytesInLastRow, () => `bytesPerRow(${idl.bytesPerRow}) must be >= bytes in the last row(${bytesInLastRow})`);
   }
   if (idl.rowsPerImage !== undefined) {
-    assert(idl.rowsPerImage >= heightInBlocks);
+    assert(idl.rowsPerImage >= heightInBlocks, () => `rowsPerImage(${idl.rowsPerImage}) must be >= heightInBlocks(${heightInBlocks})`);
   }
 
   const bytesPerRow = idl.bytesPerRow ?? 0;
   const rowsPerImage = idl.rowsPerImage ?? 0;
   let requiredBytesInCopy = 0;
   if (copyDepthOrArrayLayers > 0) {
-    requiredBytesInCopy += bytesPerRow * rowsPerImage * copyDepthOrArrayLayers - 1;
+    // all layers except the last one
+    requiredBytesInCopy += bytesPerRow * rowsPerImage * (copyDepthOrArrayLayers - 1);
     if (heightInBlocks > 0) {
+      // last layer = all rows padded + last row
       requiredBytesInCopy += bytesPerRow * (heightInBlocks - 1) + bytesInLastRow;
     }
   }
   const offset = idl.offset ?? 0;
-  assert(offset + requiredBytesInCopy <= byteSize);
+  assert(offset + requiredBytesInCopy <= byteSize, () => `offset(${offset}) + requiredBytesInCopy(${requiredBytesInCopy}) must be <= buffer.size(${byteSize})`);
 }
 
 wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function(this: GPUCommandEncoder, [src, dst, copySize]) {
@@ -147,6 +154,7 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function(this: GPUC
 
   assert(!!(dst.texture.usage & GPUTextureUsage.COPY_DST), () => `dst.texture.usage(${textureUsageToString(dst.texture.usage)} missing COPY_DST)`, [dst.texture]);
   assert(dst.texture.sampleCount === 1, 'sampleCount must be 1', [dst.texture]);
+
   let aspectSpecificFormat = dst.texture.format;
   const isDepthOrStencil = formatInfo.depth || formatInfo.stencil;
   if (isDepthOrStencil) {
@@ -159,7 +167,7 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function(this: GPUC
     assert(dst.aspect === 'depth-only' || dst.aspect === 'stencil-only', 'must use one aspect');
     const aspect = dst.aspect === 'depth-only' ? 'depth' : 'stencil';
     const info = formatInfo[aspect];
-    assert(info.copyDst, `can not copy to ${dst.aspect} of texture`, [dst.texture]);
+    assert(info.copyDst, `can not copy to ${dst.aspect} of texture of format(${dst.texture.format})`, [dst.texture]);
 
     if (aspectSpecificFormat === 'depth24plus-stencil8') {
       aspectSpecificFormat = dst.aspect === 'depth-only'
@@ -174,11 +182,12 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function(this: GPUC
 
   validateTextureCopyRange(dst, copySize);
 
+  const srcOffset = src.offset || 0;
   if (!isDepthOrStencil) {
     const texelCopyBlockFootPrint = formatInfo.bytesPerBlock;
-    assert(src.offset % texelCopyBlockFootPrint === 0, 'offset must be in blockSize');
+    assert(srcOffset % texelCopyBlockFootPrint === 0, () => `src.offset(${srcOffset}) must multiple of blockSize(${texelCopyBlockFootPrint})`);
   } else {
-    assert(src.offset % 4 === 0);
+    assert(src.offset % 4 === 0, () => `src.offset(${srcOffset}) must by multiple of 4 for depth and/or stencil textures`);
   }
 
   validateLinearTextureData(src, src.buffer.size, aspectSpecificFormat, copySize);
