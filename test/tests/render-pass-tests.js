@@ -212,6 +212,11 @@ describe('test render pass encoder', () => {
       { success: false, args: [ 1, 0, 2, 1, 0, 1], desc: 'x + width > targetWidth' },
       { success: false, args: [ 0, 0, 1, 4, 0, 1], desc: 'y + height > targetHeight' },
       { success: false, args: [ 0, 1, 1, 3, 0, 1], desc: 'y + height > targetHeight' },
+      { success: false, args: [ 0, 0, 2, 3, -1, 1], desc: 'minDepth < 0' },
+      { success: false, args: [ 0, 0, 2, 3, 2, 1], desc: 'minDepth > 1' },
+      { success: false, args: [ 0, 0, 2, 3, 0, -1], desc: 'maxDepth < 0' },
+      { success: false, args: [ 0, 0, 2, 3, 0, 2], desc: 'maxDepth > 1' },
+      { success: false, args: [ 0, 0, 2, 3, 0.5, 0.4], desc: 'minDepth > maxDepth' },
     ];
 
     for (const {success, args, desc, end} of tests) {
