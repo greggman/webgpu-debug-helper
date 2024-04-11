@@ -28,7 +28,7 @@ export function roundUp(v: number, align: number) {
   return Math.ceil(v / align) * align;
 }
 
-export function reifyGPUOrigin3D(e: GPUOrigin3D) {
+export function reifyGPUOrigin3D(e?: GPUOrigin3D) {
   e = e || [];
   const d = e as GPUOrigin3DDict;
   if (typeof d.x === 'number' || typeof d.y === 'number' || typeof d.z === 'number') {

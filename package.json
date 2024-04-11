@@ -43,8 +43,8 @@
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.1.6",
     "@tsconfig/recommended": "^1.0.6",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
+    "@typescript-eslint/eslint-plugin": "^7.6.0",
+    "@typescript-eslint/parser": "^7.6.0",
     "@webgpu/types": "^0.1.40",
     "eslint": "^8.57.0",
     "eslint-plugin-html": "^7.1.0",
@@ -55,11 +55,11 @@
     "markdown-it": "^13.0.2",
     "mocha": "^10.4.0",
     "puppeteer": "^21.11.0",
-    "rollup": "^3.29.4",
+    "rollup": "^4.14.1",
     "servez": "^2.1.4",
     "tslib": "^2.6.2",
-    "typedoc": "^0.24.8",
-    "typescript": "^5.1.6"
+    "typedoc": "^0.25.13",
+    "typescript": "^5.4.5"
   },
   "dependencies": {
     "webgpu-utils": "^1.7.0"

@@ -107,7 +107,7 @@ function validateLinearTextureData(idl: GPUImageDataLayout, byteSize: number, fo
   const { blockWidth, blockHeight } = formatInfo;
   const widthInBlocks = copyWidth / blockWidth;
   const heightInBlocks = copyHeight / blockHeight;
-  const bytesInLastRow = widthInBlocks * formatInfo.bytesPerBlock;
+  const bytesInLastRow = widthInBlocks * formatInfo.bytesPerBlock!;
 
   assert(widthInBlocks % 1 === 0, () => `width(${copyWidth}) must be multiple of blockWidth${blockWidth}`);
   assert(heightInBlocks % 1 === 0, () => `height(${copyHeight}) must be multiple of blockHeight${blockHeight}`);
@@ -167,7 +167,7 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function(this: GPUC
     assert(dst.aspect === 'depth-only' || dst.aspect === 'stencil-only', 'must use one aspect');
     const aspect = dst.aspect === 'depth-only' ? 'depth' : 'stencil';
     const info = formatInfo[aspect];
-    assert(info.copyDst, `can not copy to ${dst.aspect} of texture of format(${dst.texture.format})`, [dst.texture]);
+    assert(!!info?.copyDst, `can not copy to ${dst.aspect} of texture of format(${dst.texture.format})`, [dst.texture]);
 
     if (aspectSpecificFormat === 'depth24plus-stencil8') {
       aspectSpecificFormat = dst.aspect === 'depth-only'
@@ -184,10 +184,10 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function(this: GPUC
 
   const srcOffset = src.offset || 0;
   if (!isDepthOrStencil) {
-    const texelCopyBlockFootPrint = formatInfo.bytesPerBlock;
+    const texelCopyBlockFootPrint = formatInfo.bytesPerBlock!;
     assert(srcOffset % texelCopyBlockFootPrint === 0, () => `src.offset(${srcOffset}) must multiple of blockSize(${texelCopyBlockFootPrint})`);
   } else {
-    assert(src.offset % 4 === 0, () => `src.offset(${srcOffset}) must by multiple of 4 for depth and/or stencil textures`);
+    assert(srcOffset % 4 === 0, () => `src.offset(${srcOffset}) must by multiple of 4 for depth and/or stencil textures`);
   }
 
   validateLinearTextureData(src, src.buffer.size, aspectSpecificFormat, copySize);
