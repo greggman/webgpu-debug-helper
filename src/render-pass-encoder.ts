@@ -58,7 +58,7 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
     } else if (targetWidth !== width || targetHeight !== height) {
       emitError('attachments are not all the same width and height', [view, texture, passEncoder, commandEncoder]);
     }
-  }
+  };
 
   for (const colorAttachment of desc.colorAttachments || []) {
       addView(colorAttachment);
@@ -79,8 +79,8 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
   });
 }
 
-wrapFunctionBefore(GPURenderPassEncoder, 'draw', function(this: GPURenderPassEncoder, [vertexCount, instanceCount, firstVertex, firstInstance]) {
-  const info = s_renderPassToPassInfoMap.get(this)!
+wrapFunctionBefore(GPURenderPassEncoder, 'draw', function (this: GPURenderPassEncoder) { //, [vertexCount, instanceCount, firstVertex, firstInstance]) {
+  const info = s_renderPassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   //
   //// validate vertex buffers
@@ -96,27 +96,27 @@ wrapFunctionBefore(GPURenderPassEncoder, 'draw', function(this: GPURenderPassEnc
 //  state.bindGroups.length = 0;
 //});
 
-wrapFunctionBefore(GPURenderPassEncoder, 'setBindGroup', function(this: GPURenderPassEncoder, [index, bindGroup, dynamicOffsets]) {
+wrapFunctionBefore(GPURenderPassEncoder, 'setBindGroup', function (this: GPURenderPassEncoder, [index, bindGroup, dynamicOffsets]) {
   const info = s_renderPassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   setBindGroup(info.commandEncoder, info.bindGroups, index, bindGroup, dynamicOffsets);
 });
 
-wrapFunctionBefore(GPURenderPassEncoder, 'setPipeline', function(this: GPURenderPassEncoder, [pipeline]) {
+wrapFunctionBefore(GPURenderPassEncoder, 'setPipeline', function (this: GPURenderPassEncoder, [pipeline]) {
   const info = s_renderPassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   assert(s_objToDevice.get(info.commandEncoder) === s_objToDevice.get(pipeline), 'pipeline must be from same device as renderPassEncoder', [this, info.commandEncoder]);
   info.pipeline = pipeline;
 });
 
-wrapFunctionBefore(GPURenderPassEncoder, 'end', function(this: GPURenderPassEncoder) {
+wrapFunctionBefore(GPURenderPassEncoder, 'end', function (this: GPURenderPassEncoder) {
   const info = s_renderPassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   info.state = 'ended';
   unlockCommandEncoder(info.commandEncoder)!;
 });
 
-wrapFunctionBefore(GPURenderPassEncoder, 'setIndexBuffer', function(this: GPURenderPassEncoder, [buffer, format, offset, size]) {
+wrapFunctionBefore(GPURenderPassEncoder, 'setIndexBuffer', function (this: GPURenderPassEncoder, [buffer, format, offset, size]) {
   const info = s_renderPassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   const device = s_objToDevice.get(info.commandEncoder)!;
@@ -138,7 +138,7 @@ wrapFunctionBefore(GPURenderPassEncoder, 'setIndexBuffer', function(this: GPURen
   info.indexFormat = format;
 });
 
-wrapFunctionBefore(GPURenderPassEncoder, 'setVertexBuffer', function(this: GPURenderPassEncoder, [slot, buffer, offset, size]) {
+wrapFunctionBefore(GPURenderPassEncoder, 'setVertexBuffer', function (this: GPURenderPassEncoder, [slot, buffer, offset, size]) {
   const info = s_renderPassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   const device = s_objToDevice.get(info.commandEncoder)!;
@@ -164,7 +164,7 @@ wrapFunctionBefore(GPURenderPassEncoder, 'setVertexBuffer', function(this: GPURe
   }
 });
 
-wrapFunctionBefore(GPURenderPassEncoder, 'setViewport', function(this: GPURenderPassEncoder, [x, y, width, height, minDepth, maxDepth]: [number, number, number, number, number, number]) {
+wrapFunctionBefore(GPURenderPassEncoder, 'setViewport', function (this: GPURenderPassEncoder, [x, y, width, height, minDepth, maxDepth]: [number, number, number, number, number, number]) {
   const info = s_renderPassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   const {
@@ -176,9 +176,12 @@ wrapFunctionBefore(GPURenderPassEncoder, 'setViewport', function(this: GPURender
   assert(y >= 0, () => `y(${y}) < 0`, [this]);
   assert(x + width <= targetWidth, () => `x(${x}) + width(${width}) > texture.width(${targetWidth})`, [this]);
   assert(y + height <= targetHeight, () => `y(${x}) + height(${height}) > texture.height(${targetHeight})`, [this]);
+  assert(minDepth >= 0 && minDepth <= 1.0, () => `minDepth(${minDepth}) must be >= 0 and <= 1`);
+  assert(maxDepth >= 0 && maxDepth <= 1.0, () => `maxDepth(${maxDepth}) must be >= 0 and <= 1`);
+  assert(minDepth < maxDepth, () => `minDepth(${minDepth}) must be < maxDepth(${maxDepth})`);
 });
 
-wrapFunctionBefore(GPURenderPassEncoder, 'setScissorRect', function(this: GPURenderPassEncoder, [x, y, width, height]: [number, number, number, number]) {
+wrapFunctionBefore(GPURenderPassEncoder, 'setScissorRect', function (this: GPURenderPassEncoder, [x, y, width, height]: [number, number, number, number]) {
   const info = s_renderPassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   const {

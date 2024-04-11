@@ -1,14 +1,5 @@
 
-import {
-  assertEqual,
-  assertFalsy,
-  assertIsArray,
-  assertInstanceOf,
-  assertStrictEqual,
-  assertStrictNotEqual,
-  assertTruthy,
-} from '../assert.js';
-import {describe, it, beforeEach, afterEach} from '../mocha-support.js';
+import {describe, it} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
 
 async function createBindGroupLayout(device) {
@@ -32,7 +23,7 @@ async function createBindGroup(device, buffer) {
     layout: bindGroupLayout,
     entries: [
       { binding: 0, resource: { buffer } },
-    ]
+    ],
   });
   return bindGroup;
 }
@@ -47,7 +38,7 @@ describe('test device', () => {
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
       buffer.destroy();
       await expectValidationError(true, async () => {
-        const bindGroup = await createBindGroup(device, buffer);
+        await createBindGroup(device, buffer);
       });
 
     });

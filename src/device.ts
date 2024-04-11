@@ -1,7 +1,6 @@
 import {
   makeBindGroupLayoutDescriptors,
   makeShaderDataDefinitions,
-  PipelineDescriptor,
   ShaderDataDefinitions,
 } from 'webgpu-utils';
 
@@ -28,7 +27,7 @@ const s_layoutToAutoLayoutPipeline = new WeakMap<GPUBindGroupLayout, GPUPipeline
 
 const s_bindGroupLayoutToBindGroupLayoutDescriptor = new WeakMap<GPUBindGroupLayout, GPUBindGroupLayoutDescriptor>();
 const s_pipelineLayoutToPipelineLayoutDescriptor = new WeakMap<GPUPipelineLayout, GPUPipelineLayoutDescriptor>();
-const s_renderPipelineToRenderPipelineDescriptor = new WeakMap<GPURenderPipeline, GPURenderPipelineDescriptor>;
+const s_renderPipelineToRenderPipelineDescriptor = new WeakMap<GPURenderPipeline, GPURenderPipelineDescriptor>();
 
 function addDefs(defs: ShaderDataDefinitions[], stage: GPUProgrammableStage | undefined) {
   if (stage) {
@@ -57,19 +56,19 @@ function trackPipelineLayouts(device: GPUDevice, pipeline: GPUPipelineBase, desc
       addDefs(defs, (desc as GPURenderPipelineDescriptor).fragment);
       addDefs(defs, (desc as GPUComputePipelineDescriptor).compute);
       const layoutsDescriptors = makeBindGroupLayoutDescriptors(defs, desc);
-      const requiredGroupIndices = layoutsDescriptors.map((layout, ndx) => [...layout.entries].length > 0 ? ndx : -1).filter(v => v >= 0)
+      const requiredGroupIndices = layoutsDescriptors.map((layout, ndx) => [...layout.entries].length > 0 ? ndx : -1).filter(v => v >= 0);
       s_pipelineToRequiredGroupIndices.set(pipeline, requiredGroupIndices);
     } else {
-      
+      /* */
     }
 }
 
-wrapFunctionAfter(GPUDevice, 'createShaderModule', function(this: GPUDevice, module: GPUShaderModule, [desc]: [GPUShaderModuleDescriptor]) {
+wrapFunctionAfter(GPUDevice, 'createShaderModule', function (this: GPUDevice, module: GPUShaderModule, [desc]: [GPUShaderModuleDescriptor]) {
   assertNotDestroyed(this);
   s_shaderModuleToDefs.set(module, makeShaderDataDefinitions(desc.code));
 });
 
-wrapFunctionAfter(GPUDevice, 'createBindGroup', function(this: GPUDevice, bindGroup: GPUBindGroup, [desc]: [GPUBindGroupDescriptor]) {
+wrapFunctionAfter(GPUDevice, 'createBindGroup', function (this: GPUDevice, bindGroup: GPUBindGroup, [desc]: [GPUBindGroupDescriptor]) {
   s_objToDevice.set(bindGroup, this);
   const { layout } = desc;
   // copy the entries since the user might change them
@@ -104,43 +103,43 @@ wrapFunctionAfter(GPUDevice, 'createBindGroup', function(this: GPUDevice, bindGr
   }
 });
 
-wrapFunctionAfter(GPUDevice, 'createBuffer', function(this: GPUDevice, buffer: GPUBuffer, [desc]) {
+wrapFunctionAfter(GPUDevice, 'createBuffer', function (this: GPUDevice, buffer: GPUBuffer) {
   assertNotDestroyed(this);
   s_objToDevice.set(buffer, this);
 });
 
-wrapFunctionAfter(GPUDevice, 'createTexture', function(this: GPUDevice, texture: GPUTexture, [desc]) {
+wrapFunctionAfter(GPUDevice, 'createTexture', function (this: GPUDevice, texture: GPUTexture) {
   assertNotDestroyed(this);
   s_objToDevice.set(texture, this);
 });
 
-wrapFunctionAfter(GPUDevice, 'createCommandEncoder', function(this: GPUDevice, commandEncoder: GPUCommandEncoder, [desc]) {
+wrapFunctionAfter(GPUDevice, 'createCommandEncoder', function (this: GPUDevice, commandEncoder: GPUCommandEncoder) {
   assertNotDestroyed(this);
   s_objToDevice.set(commandEncoder, this);
   createCommandEncoder(commandEncoder);
 });
 
-wrapFunctionAfter(GPUDevice, 'createRenderPipeline', function(this: GPUDevice, pipeline: GPURenderPipeline, [desc]) {
+wrapFunctionAfter(GPUDevice, 'createRenderPipeline', function (this: GPUDevice, pipeline: GPURenderPipeline, [desc]) {
   assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
   s_renderPipelineToRenderPipelineDescriptor.set(pipeline, desc);
   trackPipelineLayouts(this, pipeline, desc);
 });
 
-wrapFunctionAfter(GPUDevice, 'createComputePipeline', function(this: GPUDevice, pipeline: GPUComputePipeline, [desc]) {
+wrapFunctionAfter(GPUDevice, 'createComputePipeline', function (this: GPUDevice, pipeline: GPUComputePipeline, [desc]) {
   assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
   trackPipelineLayouts(this, pipeline, desc);
 });
 
-wrapAsyncFunctionAfter(GPUDevice, 'createRenderPipelineAsync', function(this: GPUDevice, pipeline: GPURenderPipeline, [desc]) {
+wrapAsyncFunctionAfter(GPUDevice, 'createRenderPipelineAsync', function (this: GPUDevice, pipeline: GPURenderPipeline, [desc]) {
   assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
   s_renderPipelineToRenderPipelineDescriptor.set(pipeline, desc);
   trackPipelineLayouts(this, pipeline, desc);
 });
 
-wrapAsyncFunctionAfter(GPUDevice, 'createComputePipelineAsync', function(this: GPUDevice, pipeline: GPUComputePipeline, [desc]) {
+wrapAsyncFunctionAfter(GPUDevice, 'createComputePipelineAsync', function (this: GPUDevice, pipeline: GPUComputePipeline, [desc]) {
   assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
   trackPipelineLayouts(this, pipeline, desc);

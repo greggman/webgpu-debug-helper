@@ -1,13 +1,4 @@
-import {
-  assertEqual,
-  assertFalsy,
-  assertIsArray,
-  assertInstanceOf,
-  assertStrictEqual,
-  assertStrictNotEqual,
-  assertTruthy,
-} from '../assert.js';
-import {describe, it, beforeEach, afterEach} from '../mocha-support.js';
+import {describe, it} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
 
 async function createCommandEncoder(device) {
@@ -31,7 +22,7 @@ async function createComputePipeline(device) {
   const pipeline = device.createComputePipeline({
     layout: 'auto',
     compute: { module },
-  })
+  });
   return pipeline;
 }
 
@@ -51,7 +42,7 @@ async function createBindGroup(device) {
     layout: bindGroupLayout,
     entries: [
       { binding: 0, resource: { buffer } },
-    ]
+    ],
   });
   return bindGroup;
 }
@@ -60,12 +51,12 @@ describe('test compute pass encoder', () => {
 
  describe('check errors on beginComputePass', () => {
 
-    it('errors if 2 passes are started', async() => {
+    it('errors if 2 passes are started', async () => {
       const device = await (await navigator.gpu.requestAdapter()).requestDevice();
       const encoder = await createCommandEncoder(device);
-      const pass1 = await createComputePass(device, encoder);
+      await createComputePass(device, encoder);
       await expectValidationError(true, async () => {
-        const pass2 = await createComputePass(device, encoder);
+        await createComputePass(device, encoder);
       });
     });
 
@@ -120,7 +111,7 @@ describe('test compute pass encoder', () => {
       await expectValidationError(true, () => {
         pass.setBindGroup(0, bindGroup);
       });
-    })
+    });
 
     it('bindGroup from different device', async () => {
       const pass = await createComputePass();

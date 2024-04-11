@@ -21,7 +21,7 @@ export function textureUsageToString(mask: number) {
 }
 
 export function unreachable(msg?: string): never {
-  throw Error('unreachable');
+  throw Error(`unreachable: ${msg || ''}`);
 }
 
 export function roundUp(v: number, align: number) {
@@ -87,6 +87,7 @@ export function logicalMipLevelSpecificTextureExtent(texture: GPUTexture, mipLev
       ];
     default:
       unreachable();
+      return [];
   }
 }
 
@@ -114,5 +115,6 @@ export function physicalMipLevelSpecificTextureExtent(texture: GPUTexture, mipLe
       ];
     default:
       unreachable();
+      return [];
   }
 }

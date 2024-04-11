@@ -20,21 +20,21 @@ import {
   wrapFunctionBefore,
 } from './wrap-api.js';
 
-wrapFunctionAfter(GPUCommandEncoder, 'beginComputePass', function(this: GPUCommandEncoder, passEncoder: GPUComputePassEncoder, [desc]) {
+wrapFunctionAfter(GPUCommandEncoder, 'beginComputePass', function (this: GPUCommandEncoder, passEncoder: GPUComputePassEncoder) {
   lockCommandEncoder(this);
-  beginComputePass(this, passEncoder, desc);
+  beginComputePass(this, passEncoder);
 });
 
-wrapFunctionAfter(GPUCommandEncoder, 'beginRenderPass', function(this: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, [desc]) {
+wrapFunctionAfter(GPUCommandEncoder, 'beginRenderPass', function (this: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, [desc]) {
   lockCommandEncoder(this);
   beginRenderPass(this, passEncoder, desc);
 });
 
-wrapFunctionBefore(GPUCommandEncoder, 'finish', function(this: GPUCommandEncoder) {
+wrapFunctionBefore(GPUCommandEncoder, 'finish', function (this: GPUCommandEncoder) {
   finishCommandEncoder(this);
 });
 
-wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToBuffer', function(this: GPUCommandEncoder, [src, srcOffset, dst, dstOffset, size]) {
+wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToBuffer', function (this: GPUCommandEncoder, [src, srcOffset, dst, dstOffset, size]) {
   getCommandBufferInfoAndValidateState(this);
   assertNotDestroyed(src);
   assertNotDestroyed(dst);
@@ -54,7 +54,7 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToBuffer', function(this: GPUCo
 function validateImageCopyBuffer(icb: GPUImageCopyBuffer) {
   assertNotDestroyed(icb.buffer);
   const bytesPerRow = icb.bytesPerRow || 0;
-  assert(bytesPerRow % 256 === 0, () => `src.bytesPerRow(${bytesPerRow}) not multiple of 256`, [icb.buffer])
+  assert(bytesPerRow % 256 === 0, () => `src.bytesPerRow(${bytesPerRow}) not multiple of 256`, [icb.buffer]);
 }
 
 function validateImageCopyTexture(ict: GPUImageCopyTexture, copySize: GPUExtent3D) {
@@ -72,7 +72,7 @@ function validateImageCopyTexture(ict: GPUImageCopyTexture, copySize: GPUExtent3
   assert(origX % blockWidth === 0, () => `origin.x(${origX}) not multiple of blockWidth(${blockWidth})`, [ict.texture]);
   assert(origY % blockHeight === 0, () => `origin.y(${origY}) not multiple of blockHeight(${blockHeight})`, [ict.texture]);
 
-  const [copyWidth, copyHeight, copyDepthOrArrayLayers] = reifyGPUExtent3D(copySize)
+  const [copyWidth, copyHeight, copyDepthOrArrayLayers] = reifyGPUExtent3D(copySize);
 
   if (formatInfo.depth && formatInfo.stencil && ict.texture.sampleCount > 1) {
     const [w, h, d] = physicalMipLevelSpecificTextureExtent(ict.texture, mipLevel);
@@ -143,46 +143,48 @@ function validateLinearTextureData(idl: GPUImageDataLayout, byteSize: number, fo
   assert(offset + requiredBytesInCopy <= byteSize, () => `offset(${offset}) + requiredBytesInCopy(${requiredBytesInCopy}) must be <= buffer.size(${byteSize})`);
 }
 
-wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function(this: GPUCommandEncoder, [src, dst, copySize]) {
-  getCommandBufferInfoAndValidateState(this);
-  validateImageCopyBuffer(src);
-  assert(!!(src.buffer.usage & GPUBufferUsage.COPY_SRC), () => `src.usage(${bufferUsageToString(src.buffer.usage)} missing COPY_SRC)`, [src.buffer]);
+function validateB2TorT2BCopy(buf: GPUImageCopyBuffer, tex: GPUImageCopyTexture, copySize: GPUExtent3D, bufferIsSource: boolean) {
+  validateImageCopyBuffer(buf);
+  const [bufRequiredUsage, texRequiredUsage]: [keyof GPUBufferUsage, keyof GPUTextureUsage] = bufferIsSource
+     ? ['COPY_SRC', 'COPY_DST']
+     : ['COPY_DST', 'COPY_SRC'];
+  assert(!!(buf.buffer.usage & GPUBufferUsage[bufRequiredUsage]), () => `src.usage(${bufferUsageToString(buf.buffer.usage)} missing ${bufRequiredUsage})`, [buf.buffer]);
 
-  validateImageCopyTexture(dst, copySize);
+  validateImageCopyTexture(tex, copySize);
 
-  const formatInfo = kAllTextureFormatInfo[dst.texture.format];
+  const formatInfo = kAllTextureFormatInfo[tex.texture.format];
 
-  assert(!!(dst.texture.usage & GPUTextureUsage.COPY_DST), () => `dst.texture.usage(${textureUsageToString(dst.texture.usage)} missing COPY_DST)`, [dst.texture]);
-  assert(dst.texture.sampleCount === 1, 'sampleCount must be 1', [dst.texture]);
+  assert(!!(tex.texture.usage & GPUTextureUsage[texRequiredUsage]), () => `dst.texture.usage(${textureUsageToString(tex.texture.usage)} missing ${texRequiredUsage})`, [tex.texture]);
+  assert(tex.texture.sampleCount === 1, 'sampleCount must be 1', [tex.texture]);
 
-  let aspectSpecificFormat = dst.texture.format;
+  let aspectSpecificFormat = tex.texture.format;
   const isDepthOrStencil = formatInfo.depth || formatInfo.stencil;
   if (isDepthOrStencil) {
     if (!formatInfo.stencil) {
-      assert(dst.aspect !== 'stencil-only', 'can not use stencil-only aspect on non stencil texture', [dst.texture]);
+      assert(tex.aspect !== 'stencil-only', 'can not use stencil-only aspect on non stencil texture', [tex.texture]);
     }
     if (!formatInfo.depth) {
-      assert(dst.aspect !== 'depth-only', 'can not use depth-only aspect on non depth texture', [dst.texture]);
-    }    
-    assert(dst.aspect === 'depth-only' || dst.aspect === 'stencil-only', 'must use one aspect');
-    const aspect = dst.aspect === 'depth-only' ? 'depth' : 'stencil';
+      assert(tex.aspect !== 'depth-only', 'can not use depth-only aspect on non depth texture', [tex.texture]);
+    }
+    assert(tex.aspect === 'depth-only' || tex.aspect === 'stencil-only', 'must use one aspect');
+    const aspect = tex.aspect === 'depth-only' ? 'depth' : 'stencil';
     const info = formatInfo[aspect];
-    assert(!!info?.copyDst, `can not copy to ${dst.aspect} of texture of format(${dst.texture.format})`, [dst.texture]);
+    assert(!!info?.copyDst, `can not copy to ${tex.aspect} of texture of format(${tex.texture.format})`, [tex.texture]);
 
     if (aspectSpecificFormat === 'depth24plus-stencil8') {
-      aspectSpecificFormat = dst.aspect === 'depth-only'
+      aspectSpecificFormat = tex.aspect === 'depth-only'
         ? 'depth24plus'
         : 'stencil8';
     } else if (aspectSpecificFormat === 'depth32float-stencil8') {
-      aspectSpecificFormat = dst.aspect === 'depth-only'
+      aspectSpecificFormat = tex.aspect === 'depth-only'
         ? 'depth32float'
         : 'stencil8';
     }
   }
 
-  validateTextureCopyRange(dst, copySize);
+  validateTextureCopyRange(tex, copySize);
 
-  const srcOffset = src.offset || 0;
+  const srcOffset = buf.offset || 0;
   if (!isDepthOrStencil) {
     const texelCopyBlockFootPrint = formatInfo.bytesPerBlock!;
     assert(srcOffset % texelCopyBlockFootPrint === 0, () => `src.offset(${srcOffset}) must multiple of blockSize(${texelCopyBlockFootPrint})`);
@@ -190,6 +192,17 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function(this: GPUC
     assert(srcOffset % 4 === 0, () => `src.offset(${srcOffset}) must by multiple of 4 for depth and/or stencil textures`);
   }
 
-  validateLinearTextureData(src, src.buffer.size, aspectSpecificFormat, copySize);
+  validateLinearTextureData(buf, buf.buffer.size, aspectSpecificFormat, copySize);
+
+}
+
+wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function (this: GPUCommandEncoder, [src, dst, copySize]) {
+  getCommandBufferInfoAndValidateState(this);
+  validateB2TorT2BCopy(src, dst, copySize, true);
+});
+
+wrapFunctionBefore(GPUCommandEncoder, 'copyTextureToBuffer', function (this: GPUCommandEncoder, [src, dst, copySize]) {
+  getCommandBufferInfoAndValidateState(this);
+  validateB2TorT2BCopy(dst, src, copySize, false);
 });
 

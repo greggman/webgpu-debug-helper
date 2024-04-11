@@ -6,7 +6,9 @@ import {
 import { s_textureViewToTexture } from './texture.js';
 import {
   assert
-} from './validation.js';type EncoderState = 'open' | 'locked' | 'ended';
+} from './validation.js';
+
+type EncoderState = 'open' | 'locked' | 'ended';
 
 export type BindGroupBinding = {
   bindGroup?: GPUBindGroup | null | undefined,
@@ -47,7 +49,7 @@ export function finishCommandEncoder(commandEncoder: GPUCommandEncoder) {
 }
 
 export function getCommandBufferInfoAndValidateState(commandEncoder: GPUCommandEncoder) {
-  const info = s_commandEncoderToInfoMap.get(commandEncoder)!
+  const info = s_commandEncoderToInfoMap.get(commandEncoder)!;
   validateEncoderState(commandEncoder, info.state);
   return info;
 }
@@ -73,14 +75,14 @@ export function setBindGroup(parent: GPUCommandEncoder, bindGroupBindings: BindG
   assert(index >= 0, () => `index(${index}) must be >= 0`);
   assert(index < maxIndex, () => `index(${index}) must be < device.limits.maxBindGroups(${maxIndex})`);
   // TODO: Get dynamic offsets from layout
-  const dynamicOffsetCount = 0 ; //bindGroup ? layout.dynamicOffsetCount : 0;
+  const dynamicOffsetCount = 0; //bindGroup ? layout.dynamicOffsetCount : 0;
   dynamicOffsets = dynamicOffsets || new Uint32Array(0);
-  assert(dynamicOffsets.length === dynamicOffsetCount, `there must be the same number of dynamicOffsets(${dynamicOffsets.length}) as the layout requires (${dynamicOffsetCount})`)
+  assert(dynamicOffsets.length === dynamicOffsetCount, `there must be the same number of dynamicOffsets(${dynamicOffsets.length}) as the layout requires (${dynamicOffsetCount})`);
   if (bindGroup) {
     assert(device === s_objToDevice.get(bindGroup), () => `bindGroup must be from same device as ${parent.constructor.name}`, [bindGroup, parent]);
 
     // Validate resources are not destroyed
-    const info = s_bindGroupToInfo.get(bindGroup)!
+    const info = s_bindGroupToInfo.get(bindGroup)!;
     validateBindGroupResourcesNotDestroyed(info.desc.entries);
 
     // TODO: Validate Dynamic Offsets

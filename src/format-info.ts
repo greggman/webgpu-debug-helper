@@ -1,3 +1,4 @@
+/* eslint-disable require-trailing-comma/require-trailing-comma */
 export type DataInfo = {
   copySrc: boolean,
   copyDst: boolean,

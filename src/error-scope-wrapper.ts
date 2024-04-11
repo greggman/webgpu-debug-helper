@@ -29,14 +29,14 @@ function emitGPUError(device: GPUDevice, error: GPUError) {
 
 interface ThingWithPrototype<T> extends Object {
   prototype: Record<string, any>;
-};
+}
 
 /**
  * Given a class and a function name adds a push/popErrorScope wrapper.
  */
 function addErrorWrapper<T>(api: ThingWithPrototype<T>, fnName: string) {
   const origFn = api.prototype[fnName];
-  api.prototype[fnName] = function(this: T, ...args: any[]) {
+  api.prototype[fnName] = function (this: T, ...args: any[]) {
     const stack = new Error();
     origPushErrorScope.call(this, 'validation');
     const result = origFn.call(this, ...args);
@@ -50,7 +50,7 @@ function addErrorWrapper<T>(api: ThingWithPrototype<T>, fnName: string) {
         }
        });
     return result;
-  }
+  };
 }
 
 /**
@@ -59,7 +59,7 @@ function addErrorWrapper<T>(api: ThingWithPrototype<T>, fnName: string) {
 function getAPIFunctionNames<T>(api: ThingWithPrototype<T>) {
   return Object.entries(Object.getOwnPropertyDescriptors(api.prototype))
      .filter(([, info]) => info.enumerable && typeof info.value === 'function')
-     .map(([name]) => name)
+     .map(([name]) => name);
 }
 
 const skip = new Set([
@@ -71,16 +71,16 @@ getAPIFunctionNames(GPUDevice)
   .filter(n => !skip.has(n))
   .forEach(n => addErrorWrapper(GPUDevice, n));
 
-GPUDevice.prototype.pushErrorScope = (function(origFn) {
-  return function(this: GPUDevice, filter: GPUErrorFilter) {
+GPUDevice.prototype.pushErrorScope = (function (origFn) {
+  return function (this: GPUDevice, filter: GPUErrorFilter) {
     origFn.call(this, filter);
     const errorScopeStack = deviceToErrorScopeStack.get(this);
     errorScopeStack!.push({filter, errors: []});
   };
-})(GPUDevice.prototype.pushErrorScope)
+})(GPUDevice.prototype.pushErrorScope);
 
-GPUDevice.prototype.popErrorScope = (function(origFn) {
-  return async function(this: GPUDevice) {
+GPUDevice.prototype.popErrorScope = (function (origFn) {
+  return async function (this: GPUDevice) {
     const errorScopeStack = deviceToErrorScopeStack.get(this);
     const errorScope = errorScopeStack!.pop();
     if (errorScope === undefined) {
@@ -89,18 +89,18 @@ GPUDevice.prototype.popErrorScope = (function(origFn) {
     const err = await origFn.call(this);
     return errorScope.errors.length > 0 ? errorScope.errors.pop()! : err;
   };
-})(GPUDevice.prototype.popErrorScope)
+})(GPUDevice.prototype.popErrorScope);
 
-GPUAdapter.prototype.requestDevice = (function(origFn) {
-  return async function(this: GPUAdapter, ...args) {
+GPUAdapter.prototype.requestDevice = (function (origFn) {
+  return async function (this: GPUAdapter, ...args) {
     const device = await origFn.call(this, ...args);
     if (device) {
-      device.addEventListener('uncapturederror', function(e) {
+      device.addEventListener('uncapturederror', function (e) {
         console.error((e as GPUUncapturedErrorEvent).error.message);
       });
       deviceToErrorScopeStack.set(device, []);
     }
     return device;
-  }
+  };
 })(GPUAdapter.prototype.requestDevice);
 
