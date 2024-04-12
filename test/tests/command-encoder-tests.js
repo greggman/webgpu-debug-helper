@@ -3,6 +3,7 @@ import {expectValidationError} from '../js/utils.js';
 import copyBufferToBufferTests from './command-encoder/copyBufferToBuffer-tests.js';
 import copyBufferToTextureTests from './command-encoder/copyBufferToTexture-tests.js';
 import copyTextureToBufferTests from './command-encoder/copyTextureToBuffer-tests.js';
+import copyTextureToTextureTests from './command-encoder/copyTextureToTexture-tests.js';
 
 async function createCommandEncoder(device) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
@@ -34,5 +35,6 @@ describe('test command encoder', () => {
   copyBufferToBufferTests();
   copyBufferToTextureTests();
   copyTextureToBufferTests();
+  copyTextureToTextureTests();
 
 });

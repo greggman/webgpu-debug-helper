@@ -3,12 +3,13 @@ import {
 } from '../../assert.js';
 import {it} from '../../mocha-support.js';
 import {expectValidationError, bufferUsageToString, textureUsageToString } from '../../js/utils.js';
-async function createCommandEncoder(device) {
+
+export async function createCommandEncoder(device) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
   return device.createCommandEncoder();
 }
 
-async function createDeviceWith4x4Format16BytesPerPixel() {
+export async function createDeviceWith4x4Format16BytesPerPixel() {
   const adapter = await navigator.gpu.requestAdapter();
   const device = await adapter.requestDevice({requiredFeatures: adapter.features});
 

@@ -200,8 +200,8 @@ function isCopyCompatible(format1: GPUTextureFormat, format2: GPUTextureFormat) 
 }
 
 function isIntersectingAxis(v1: number, v2: number, size: number) {
-  const length = v2 - v1;
-  const gap = length - size;
+  const distance = Math.abs(v2 - v1);
+  const gap = distance - size;
   return gap < 0;
 }
 
@@ -245,7 +245,7 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyTextureToTexture', function (this: GP
       !isIntersectingAxis(srcOrigin[0], dstOrigin[0], size[0]) &&
       !isIntersectingAxis(srcOrigin[1], dstOrigin[1], size[1]) &&
       !isIntersectingAxis(srcOrigin[2], dstOrigin[2], size[2]),
-      () => `when textures are the same texture, copy boxes must not overlap`, [src.texture, dst.texture]);
+      () => `when src and dst textures are the same texture, copy boxes must not overlap`, [src.texture, dst.texture]);
   }
 
 });
