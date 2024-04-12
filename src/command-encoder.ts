@@ -193,7 +193,16 @@ function validateB2TorT2BCopy(buf: GPUImageCopyBuffer, tex: GPUImageCopyTexture,
   }
 
   validateLinearTextureData(buf, buf.buffer.size, aspectSpecificFormat, copySize);
+}
 
+function isCopyCompatible(format1: GPUTextureFormat, format2: GPUTextureFormat) {
+  return format1.replace('-srgb', '') === format2.replace('-srgb', '');
+}
+
+function isIntersectingAxis(v1: number, v2: number, size: number) {
+  const length = v2 - v1;
+  const gap = length - size;
+  return gap < 0;
 }
 
 wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function (this: GPUCommandEncoder, [src, dst, copySize]) {
@@ -206,3 +215,37 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyTextureToBuffer', function (this: GPU
   validateB2TorT2BCopy(dst, src, copySize, false);
 });
 
+wrapFunctionBefore(GPUCommandEncoder, 'copyTextureToTexture', function (this: GPUCommandEncoder, [src, dst, copySize]) {
+  getCommandBufferInfoAndValidateState(this);
+
+  validateImageCopyTexture(src, copySize);
+  assert(!!(src.texture.usage & GPUTextureUsage.COPY_SRC), () => `src.texture.usage(${textureUsageToString(src.texture.usage)} missing COPY_SRC`, [src.texture]);
+
+  validateImageCopyTexture(dst, copySize);
+  assert(!!(dst.texture.usage & GPUTextureUsage.COPY_DST), () => `src.texture.usage(${textureUsageToString(dst.texture.usage)} missing COPY_DST`, [dst.texture]);
+
+  assert(src.texture.sampleCount === dst.texture.sampleCount, () => `src.texture.sampleCount(${src.texture.sampleCount}) must equal dst.texture.sampleCount(${dst.texture.sampleCount})`, [src.texture, dst.texture]);
+  assert(isCopyCompatible(src.texture.format, dst.texture.format), () => `src.texture.format(${src.texture.format}) must be copy compatible with dst.texture.format(${dst.texture.format})`, [src.texture, dst.texture]);
+
+  const formatInfo = kAllTextureFormatInfo[src.texture.format];
+  const isDepthStencil = !!formatInfo.depth && !!formatInfo.stencil;
+  if (isDepthStencil) {
+    assert(src.aspect === 'all', () => `src.aspect must be 'all' when format(${src.texture.format}) is a depth-stencil format`, [src.texture]);
+    assert(dst.aspect === 'all', () => `dst.aspect must be 'all' when format(${dst.texture.format}) is a depth-stencil format`, [dst.texture]);
+  }
+
+  validateTextureCopyRange(src, copySize);
+  validateTextureCopyRange(dst, copySize);
+
+  if (src.texture === dst.texture) {
+    const srcOrigin = reifyGPUOrigin3D(src.origin);
+    const dstOrigin = reifyGPUOrigin3D(dst.origin);
+    const size = reifyGPUExtent3D(copySize);
+    assert(
+      !isIntersectingAxis(srcOrigin[0], dstOrigin[0], size[0]) &&
+      !isIntersectingAxis(srcOrigin[1], dstOrigin[1], size[1]) &&
+      !isIntersectingAxis(srcOrigin[2], dstOrigin[2], size[2]),
+      () => `when textures are the same texture, copy boxes must not overlap`, [src.texture, dst.texture]);
+  }
+
+});
