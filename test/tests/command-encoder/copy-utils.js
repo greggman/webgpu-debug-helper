@@ -110,6 +110,46 @@ export function addCopyTests({
     });
   });
 
+  it('fails if buffer is from a different device', async () => {
+    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    const encoder = await createCommandEncoder(device);
+    const device2 = await (await navigator.gpu.requestAdapter()).requestDevice();
+    const buffer = device2.createBuffer({size: 2048, usage: bufferUsage});
+    const texture = device.createTexture({
+      format: 'rgba8unorm',
+      size: [4, 4],
+      usage: textureUsage,
+    });
+    await expectValidationError(true, async () => {
+      doTest(
+        encoder,
+        { buffer, bytesPerRow: 256 },
+        { texture },
+        [4, 4],
+      );
+    });
+  });
+
+  it('fails if texture is from a different device', async () => {
+    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    const encoder = await createCommandEncoder(device);
+    const device2 = await (await navigator.gpu.requestAdapter()).requestDevice();
+    const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
+    const texture = device2.createTexture({
+      format: 'rgba8unorm',
+      size: [4, 4],
+      usage: textureUsage,
+    });
+    await expectValidationError(true, async () => {
+      doTest(
+        encoder,
+        { buffer, bytesPerRow: 256 },
+        { texture },
+        [4, 4],
+      );
+    });
+  });
+
   it('fails if bytesPerRow is not multiple of 256', async () => {
     const device = await (await navigator.gpu.requestAdapter()).requestDevice();
     const encoder = await createCommandEncoder(device);

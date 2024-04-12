@@ -95,6 +95,7 @@ export default function () {
       { options: { origin: [0, 8]}, desc: 'fails if $.originY + copySize.height > texture.width' },
       { destroy: true, desc: 'fails if $ destroyed' },
       { usage: true, desc: 'fails if $ usage incorrect' },
+      { otherDevice: true, desc: 'fails if $ from different device' },
     ];
 
     // test depth-stencil must be entire texture if sampleCount > 1
@@ -102,7 +103,7 @@ export default function () {
 
     ['src', 'dst'].forEach((sd, i) => {
       describe(sd, () => {
-        for (const {options, destroy, usage, desc} of sdTests) {
+        for (const {options, destroy, usage, otherDevice, desc} of sdTests) {
           it(desc.replaceAll('$', sd), async () => {
             const { device, format } = await createDeviceWith4x4Format16BytesPerPixel();
             const encoder = await createCommandEncoder(device);
@@ -110,7 +111,11 @@ export default function () {
             if (usage) {
               usages[i] = GPUTextureUsage.TEXTURE_BINDING;
             }
-            const [src, dst] = usages.map(usage => device.createTexture({ format, size: [8, 8], usage }));
+            const devices = [device, device];
+            if (otherDevice) {
+              devices[i] = (await createDeviceWith4x4Format16BytesPerPixel()).device;
+            }
+            const [src, dst] = usages.map((usage, i) => devices[i].createTexture({ format, size: [8, 8], usage }));
             if (destroy) {
               [src, dst][i].destroy();
             }

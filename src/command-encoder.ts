@@ -143,7 +143,11 @@ function validateLinearTextureData(idl: GPUImageDataLayout, byteSize: number, fo
   assert(offset + requiredBytesInCopy <= byteSize, () => `offset(${offset}) + requiredBytesInCopy(${requiredBytesInCopy}) must be <= buffer.size(${byteSize})`);
 }
 
-function validateB2TorT2BCopy(buf: GPUImageCopyBuffer, tex: GPUImageCopyTexture, copySize: GPUExtent3D, bufferIsSource: boolean) {
+function validateB2TorT2BCopy(encoder: GPUCommandEncoder, buf: GPUImageCopyBuffer, tex: GPUImageCopyTexture, copySize: GPUExtent3D, bufferIsSource: boolean) {
+  const device = s_objToDevice.get(encoder);
+  assert(device === s_objToDevice.get(buf.buffer), 'buffer is not from same device as commandEncoder', [buf.buffer, encoder]);
+  assert(device === s_objToDevice.get(tex.texture), 'texture is not from same device as commandEncoder', [tex.texture, encoder]);
+
   validateImageCopyBuffer(buf);
   const [bufRequiredUsage, texRequiredUsage]: [keyof GPUBufferUsage, keyof GPUTextureUsage] = bufferIsSource
      ? ['COPY_SRC', 'COPY_DST']
@@ -207,16 +211,20 @@ function isIntersectingAxis(v1: number, v2: number, size: number) {
 
 wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToTexture', function (this: GPUCommandEncoder, [src, dst, copySize]) {
   getCommandBufferInfoAndValidateState(this);
-  validateB2TorT2BCopy(src, dst, copySize, true);
+  validateB2TorT2BCopy(this, src, dst, copySize, true);
 });
 
 wrapFunctionBefore(GPUCommandEncoder, 'copyTextureToBuffer', function (this: GPUCommandEncoder, [src, dst, copySize]) {
   getCommandBufferInfoAndValidateState(this);
-  validateB2TorT2BCopy(dst, src, copySize, false);
+  validateB2TorT2BCopy(this, dst, src, copySize, false);
 });
 
 wrapFunctionBefore(GPUCommandEncoder, 'copyTextureToTexture', function (this: GPUCommandEncoder, [src, dst, copySize]) {
   getCommandBufferInfoAndValidateState(this);
+
+  const device = s_objToDevice.get(this);
+  assert(device === s_objToDevice.get(src.texture), 'src.texture is not from same device as commandEncoder', [src, this]);
+  assert(device === s_objToDevice.get(dst.texture), 'dst.texture is not from same device as commandEncoder', [dst, this]);
 
   validateImageCopyTexture(src, copySize);
   assert(!!(src.texture.usage & GPUTextureUsage.COPY_SRC), () => `src.texture.usage(${textureUsageToString(src.texture.usage)} missing COPY_SRC`, [src.texture]);
@@ -247,5 +255,16 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyTextureToTexture', function (this: GP
       !isIntersectingAxis(srcOrigin[2], dstOrigin[2], size[2]),
       () => `when src and dst textures are the same texture, copy boxes must not overlap`, [src.texture, dst.texture]);
   }
+});
 
+wrapFunctionBefore(GPUCommandEncoder, 'clearBuffer', function (this: GPUCommandEncoder, [buffer, offset, size]) {
+  getCommandBufferInfoAndValidateState(this);
+  assertNotDestroyed(buffer);
+  offset = offset ?? 0;
+  size = size ?? buffer.size - offset;
+  assert(s_objToDevice.get(this) === s_objToDevice.get(buffer), 'buffer not from same device as encoder', [buffer, this]);
+  assert(!!(buffer.usage & GPUBufferUsage.COPY_DST), () => `buffer.usage(${bufferUsageToString(buffer.usage)}) must have COPY_DST`, [buffer]);
+  assert(size % 4 === 0, () => `size(${size}) must be multiple of 4`);
+  assert(offset % 4 === 0, () => `offset(${offset}) must be multiple of 4`);
+  assert(offset + size <= buffer.size, () => `offset(${offset}) + size(${size}) must be <= buffer.size(${buffer.size})`);
 });
