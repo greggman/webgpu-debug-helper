@@ -9,6 +9,12 @@ import {
   validateBindGroupResourcesNotDestroyed,
 } from './encoder-utils.js';
 import {
+  s_renderPipelineToRenderPipelineDescriptor,
+} from './pipeline.js';
+import {
+  createRenderBundleEncoder,
+} from './render-bundle-encoder.js';
+import {
   assertNotDestroyed,
   s_bindGroupToInfo,
   s_objToDevice,
@@ -26,8 +32,7 @@ const s_pipelineToRequiredGroupIndices = new WeakMap<GPUPipelineBase, number[]>(
 const s_layoutToAutoLayoutPipeline = new WeakMap<GPUBindGroupLayout, GPUPipelineBase>();
 
 const s_bindGroupLayoutToBindGroupLayoutDescriptor = new WeakMap<GPUBindGroupLayout, GPUBindGroupLayoutDescriptor>();
-const s_pipelineLayoutToPipelineLayoutDescriptor = new WeakMap<GPUPipelineLayout, GPUPipelineLayoutDescriptor>();
-const s_renderPipelineToRenderPipelineDescriptor = new WeakMap<GPURenderPipeline, GPURenderPipelineDescriptor>();
+const s_pipelineLayoutToBindGroupLayoutDescriptors = new WeakMap<GPUPipelineLayout, GPUPipelineLayoutDescriptor>();
 
 function addDefs(defs: ShaderDataDefinitions[], stage: GPUProgrammableStage | undefined) {
   if (stage) {
@@ -42,11 +47,32 @@ function addDefs(defs: ShaderDataDefinitions[], stage: GPUProgrammableStage | un
 // }
 
 function trackPipelineLayout(this: GPUDevice, pipelineLayout: GPUPipelineLayout, [desc]: [GPUPipelineLayoutDescriptor]) {
-  s_pipelineLayoutToPipelineLayoutDescriptor.set(pipelineLayout, desc);
+  // need to copy the description because the user may change it after
+  const pipelineLayoutDescriptor: GPUPipelineLayoutDescriptor = {
+    bindGroupLayouts: [...desc.bindGroupLayouts],
+  };
+  s_pipelineLayoutToBindGroupLayoutDescriptors.set(pipelineLayout, pipelineLayoutDescriptor);
+}
+
+function copyBindGroupLayoutEntry(entry: GPUBindGroupLayoutEntry): GPUBindGroupLayoutEntry {
+  const { binding, visibility, buffer, sampler, texture, storageTexture, externalTexture } = entry;
+  return {
+    binding,
+    visibility,
+    ...(buffer ?? {...buffer!}),
+    ...(sampler ?? {...sampler!}),
+    ...(texture ?? {...texture!}),
+    ...(storageTexture ?? {...storageTexture!}),
+    ...(externalTexture ?? {...externalTexture!}),
+  };
 }
 
 function trackBindGroupLayout(this: GPUDevice, bindGroupLayout: GPUBindGroupLayout, [desc]: [GPUBindGroupLayoutDescriptor]) {
-  s_bindGroupLayoutToBindGroupLayoutDescriptor.set(bindGroupLayout, desc);
+  // need to copy bindGroupLayoutDescriptor as user might change it.
+  const bindGroupLayoutDescriptor: GPUBindGroupLayoutDescriptor = {
+    entries: [...desc.entries].map(copyBindGroupLayoutEntry),
+  };
+  s_bindGroupLayoutToBindGroupLayoutDescriptor.set(bindGroupLayout, bindGroupLayoutDescriptor);
 }
 
 function trackPipelineLayouts(device: GPUDevice, pipeline: GPUPipelineBase, desc: GPUComputePipelineDescriptor | GPURenderPipelineDescriptor) {
@@ -119,6 +145,12 @@ wrapFunctionAfter(GPUDevice, 'createCommandEncoder', function (this: GPUDevice, 
   createCommandEncoder(commandEncoder);
 });
 
+wrapFunctionAfter(GPUDevice, 'createRenderBundleEncoder', function (this: GPUDevice, bundleEncoder: GPURenderBundleEncoder, [desc]) {
+  assertNotDestroyed(this);
+  s_objToDevice.set(bundleEncoder, this);
+  createRenderBundleEncoder(bundleEncoder, desc);
+});
+
 wrapFunctionAfter(GPUDevice, 'createRenderPipeline', function (this: GPUDevice, pipeline: GPURenderPipeline, [desc]) {
   assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
@@ -147,5 +179,4 @@ wrapAsyncFunctionAfter(GPUDevice, 'createComputePipelineAsync', function (this: 
 
 wrapFunctionAfter(GPUDevice, 'createBindGroupLayout', trackBindGroupLayout);
 wrapFunctionAfter(GPUDevice, 'createPipelineLayout', trackPipelineLayout);
-//wrapFunctionAfter(GPUDevice, 'createRenderBundleEncoder', addPassState);
 

@@ -12,8 +12,11 @@ export type DeviceResource =
   | GPUBindGroupLayout
   | GPUBuffer
   | GPUCommandEncoder
+  | GPUComputePassEncoder
   | GPUComputePipeline
   | GPUPipelineLayout
+  | GPURenderBundleEncoder
+  | GPURenderPassEncoder
   | GPURenderPipeline
 
 export const s_objToDevice = new WeakMap<DeviceResource, GPUDevice>();

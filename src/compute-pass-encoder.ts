@@ -2,7 +2,7 @@ import {
   unlockCommandEncoder,
   PassInfo,
   setBindGroup,
-  validateEncoderState
+  validateEncoderState,
 } from './encoder-utils.js';
 import {
   s_objToDevice,
@@ -15,6 +15,7 @@ import {
 } from './wrap-api.js';
 
 type ComputePassInfo = PassInfo & {
+  commandEncoder: GPUCommandEncoder,
   pipeline?: GPUComputePipeline,
 };
 

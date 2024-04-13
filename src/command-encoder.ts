@@ -21,11 +21,13 @@ import {
 } from './wrap-api.js';
 
 wrapFunctionAfter(GPUCommandEncoder, 'beginComputePass', function (this: GPUCommandEncoder, passEncoder: GPUComputePassEncoder) {
+  s_objToDevice.set(passEncoder, s_objToDevice.get(this)!);
   lockCommandEncoder(this);
   beginComputePass(this, passEncoder);
 });
 
 wrapFunctionAfter(GPUCommandEncoder, 'beginRenderPass', function (this: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, [desc]) {
+  s_objToDevice.set(passEncoder, s_objToDevice.get(this)!);
   lockCommandEncoder(this);
   beginRenderPass(this, passEncoder, desc);
 });

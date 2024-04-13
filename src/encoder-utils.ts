@@ -20,11 +20,10 @@ export type EncoderInfo = {
 }
 
 export type PassInfo = EncoderInfo & {
-  commandEncoder: GPUCommandEncoder,
   bindGroups: BindGroupBinding[],
 }
 
-export function validateEncoderState(encoder: GPUComputePassEncoder | GPURenderPassEncoder | GPUCommandEncoder, state: EncoderState) {
+export function validateEncoderState(encoder: GPUComputePassEncoder | GPURenderPassEncoder | GPUCommandEncoder | GPURenderBundleEncoder, state: EncoderState) {
   assert(state === 'open', () => `encoder state(${state}) is not "open"`, [encoder]);
 }
 
