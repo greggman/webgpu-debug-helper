@@ -160,7 +160,7 @@ export function wrapRenderCommandsMixin<T extends RenderMixin>(
           : firstVertex + vertexCount;
       if (strideCount !== 0) {
         const bytesNeeded = (strideCount - 1) * stride + lastStride;
-        assert(bytesNeeded < bufferSize, () => `slot(${slot}) vertex buffer binding size ${bufferSize} is not large enough for bytes needed(${bytesNeeded})`);
+        assert(bytesNeeded <= bufferSize, () => `slot(${slot}) vertex buffer binding size ${bufferSize} is not large enough for bytes needed(${bytesNeeded})`);
       }
     });
   });
@@ -176,7 +176,7 @@ export function wrapRenderCommandsMixin<T extends RenderMixin>(
     const bufferSize = bufferSizeFromBufferBinding(info.indexBuffer!);
     const indexByteSize = info.indexFormat === 'uint16' ? 2 : 4;
     const bytesNeeded = firstIndex + indexCount * indexByteSize;
-    assert(bytesNeeded < bufferSize, () => `indexBuffer bound size(${bufferSize}) is not large enough for bytesNeeded(${bytesNeeded})`);
+    assert(bytesNeeded <= bufferSize, () => `indexBuffer bound size(${bufferSize}) is not large enough for bytesNeeded(${bytesNeeded})`);
 
     const pipelineDescriptor = s_renderPipelineToRenderPipelineDescriptor.get(info.pipeline!)!;
     if (pipelineDescriptor.vertex.buffers) {
@@ -195,7 +195,7 @@ export function wrapRenderCommandsMixin<T extends RenderMixin>(
           const strideCount = firstInstance + instanceCount;
           if (layout.stepMode === 'instance') {
             const bytesNeeded = (strideCount - 1) * stride + lastStride;
-            assert(bytesNeeded < bufferSize, () => `slot(${slot}) vertex buffer binding size ${bufferSize} is not large enough for bytes needed(${bytesNeeded})`);
+            assert(bytesNeeded <= bufferSize, () => `slot(${slot}) vertex buffer binding size ${bufferSize} is not large enough for bytes needed(${bytesNeeded})`);
           }
         }
       });

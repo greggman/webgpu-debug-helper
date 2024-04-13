@@ -1,7 +1,13 @@
 import {
+  validateEncoderState,
+} from './encoder-utils.js';
+import {
   RenderDrawInfo,
   wrapRenderCommandsMixin,
 } from './render-commands-mixin.js';
+import {
+  wrapFunctionBefore,
+} from './wrap-api.js';
 
 type BundleEncoderInfo = RenderDrawInfo & {
   desc: GPURenderBundleDescriptor,
@@ -19,3 +25,9 @@ export function createRenderBundleEncoder(encoder: GPURenderBundleEncoder, desc:
     bindGroups: [],
   });
 }
+
+wrapFunctionBefore(GPURenderBundleEncoder, 'finish', function (this: GPURenderBundleEncoder) {
+  const info = s_bundleEncoderToPassInfoMap.get(this)!;
+  validateEncoderState(this, info.state);
+  info.state = 'ended';
+});
