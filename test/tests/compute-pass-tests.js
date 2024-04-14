@@ -26,27 +26,6 @@ async function createComputePipeline(device) {
   return pipeline;
 }
 
-async function createBindGroup(device) {
-  device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
-  const bindGroupLayout = device.createBindGroupLayout({
-    entries: [
-      {
-        binding: 0,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: {},
-      },
-    ],
-  });
-  const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
-  const bindGroup = device.createBindGroup({
-    layout: bindGroupLayout,
-    entries: [
-      { binding: 0, resource: { buffer } },
-    ],
-  });
-  return bindGroup;
-}
-
 describe('test compute pass encoder', () => {
 
  describe('check errors on beginComputePass', () => {
@@ -87,55 +66,6 @@ describe('test compute pass encoder', () => {
       pass.end();
       await expectValidationError(true, () => {
         pass.setPipeline(pipeline);
-      });
-    });
-
-  });
-
-  describe('check errors on setBindGroup', () => {
-
-    it('works', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-      const pass = await createComputePass(device);
-      const bindGroup = await createBindGroup(device);
-      await expectValidationError(false, () => {
-        pass.setBindGroup(0, bindGroup);
-      });
-    });
-
-    it('fails if ended', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-      const pass = await createComputePass(device);
-      const bindGroup = await createBindGroup(device);
-      pass.end();
-      await expectValidationError(true, () => {
-        pass.setBindGroup(0, bindGroup);
-      });
-    });
-
-    it('bindGroup from different device', async () => {
-      const pass = await createComputePass();
-      const bindGroup = await createBindGroup();
-      await expectValidationError(true, () => {
-        pass.setBindGroup(0, bindGroup);
-      });
-    });
-
-    it('index < 0', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-      const pass = await createComputePass(device);
-      const bindGroup = await createBindGroup(device);
-      await expectValidationError(true, () => {
-        pass.setBindGroup(-1, bindGroup);
-      });
-    });
-
-    it('index > max', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-      const pass = await createComputePass(device);
-      const bindGroup = await createBindGroup(device);
-      await expectValidationError(true, () => {
-        pass.setBindGroup(device.limits.maxBindGroups, bindGroup);
       });
     });
 

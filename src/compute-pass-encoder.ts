@@ -1,7 +1,9 @@
 import {
-  unlockCommandEncoder,
   PassInfo,
-  setBindGroup,
+  wrapBindingCommandsMixin,
+} from './binding-mixin.js';
+import {
+  unlockCommandEncoder,
   validateEncoderState,
 } from './encoder-utils.js';
 import {
@@ -29,11 +31,7 @@ export function beginComputePass(commandEncoder: GPUCommandEncoder, passEncoder:
   });
 }
 
-wrapFunctionBefore(GPUComputePassEncoder, 'setBindGroup', function (this: GPUComputePassEncoder, [index, bindGroup, dynamicOffsets]) {
-  const info = s_computePassToPassInfoMap.get(this)!;
-  validateEncoderState(this, info.state);
-  setBindGroup(info.commandEncoder, info.bindGroups, index, bindGroup, dynamicOffsets);
-});
+wrapBindingCommandsMixin(GPUComputePassEncoder, s_computePassToPassInfoMap);
 
 wrapFunctionBefore(GPUComputePassEncoder, 'setPipeline', function (this: GPUComputePassEncoder, [pipeline]) {
   const info = s_computePassToPassInfoMap.get(this)!;

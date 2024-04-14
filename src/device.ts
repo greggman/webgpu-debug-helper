@@ -5,8 +5,10 @@ import {
 } from 'webgpu-utils';
 
 import {
-  createCommandEncoder,
   validateBindGroupResourcesNotDestroyed,
+} from './binding-mixin.js';
+import {
+  createCommandEncoder,
 } from './encoder-utils.js';
 import {
   s_renderPipelineToRenderPipelineDescriptor,

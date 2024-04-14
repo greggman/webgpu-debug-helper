@@ -1,4 +1,7 @@
 import {
+  wrapBindingCommandsMixin
+} from './binding-mixin.js';
+import {
   validateEncoderState,
 } from './encoder-utils.js';
 import {
@@ -25,6 +28,8 @@ export function createRenderBundleEncoder(encoder: GPURenderBundleEncoder, desc:
     bindGroups: [],
   });
 }
+
+wrapBindingCommandsMixin(GPURenderBundleEncoder, s_bundleEncoderToPassInfoMap);
 
 wrapFunctionBefore(GPURenderBundleEncoder, 'finish', function (this: GPURenderBundleEncoder) {
   const info = s_bundleEncoderToPassInfoMap.get(this)!;

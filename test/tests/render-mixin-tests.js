@@ -8,7 +8,7 @@ async function createRenderPipeline(device) {
       @vertex fn vsMain(
         @location(0) a0 : vec4f,
         @location(1) a1 : vec4f,
-        @location(1) a2 : vec4f,
+        @location(2) a2 : vec4f,
       ) -> @builtin(position) vec4f {
         return a0 + a1 + a2;
       }

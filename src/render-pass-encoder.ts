@@ -1,6 +1,8 @@
 import {
+  wrapBindingCommandsMixin,
+} from './binding-mixin.js';
+import {
   unlockCommandEncoder,
-  setBindGroup,
   validateEncoderState,
 } from './encoder-utils.js';
 import {
@@ -81,11 +83,7 @@ wrapFunctionBefore(GPURenderPassEncoder, 'executeBundles', function (this: GPURe
   // TODO: validate bundle stuff
 });
 
-wrapFunctionBefore(GPURenderPassEncoder, 'setBindGroup', function (this: GPURenderPassEncoder, [index, bindGroup, dynamicOffsets]) {
-  const info = s_renderPassToPassInfoMap.get(this)!;
-  validateEncoderState(this, info.state);
-  setBindGroup(info.commandEncoder, info.bindGroups, index, bindGroup, dynamicOffsets);
-});
+wrapBindingCommandsMixin(GPURenderPassEncoder, s_renderPassToPassInfoMap);
 
 wrapFunctionBefore(GPURenderPassEncoder, 'end', function (this: GPURenderPassEncoder) {
   const info = s_renderPassToPassInfoMap.get(this)!;

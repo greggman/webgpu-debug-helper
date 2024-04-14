@@ -1,7 +1,9 @@
 import {
   PassInfo,
+  validateEncoderBindGroups,
+} from './binding-mixin.js';
+import {
   validateEncoderState,
-  BindGroupBinding
 } from './encoder-utils.js';
 import {
   assertNotDestroyed,
@@ -34,13 +36,6 @@ export type RenderDrawInfo = PassInfo & {
   indexFormat?: GPUIndexFormat,
   vertexBuffers: (BufferWithOffsetAndSize | undefined)[],
 };
-
-function validateEncoderBindGroups(bindGroups: BindGroupBinding[], pipeline?: GPURenderPipeline | GPUComputePipeline) {
-  assert(!!pipeline, 'no pipeline set');
-
-  const bindGroupSpaceUsed = 0;
-  return bindGroupSpaceUsed;
-}
 
 function toArray<T>(v: Iterable<T>): T[] {
   return Array.isArray(v) ? v : [...v];

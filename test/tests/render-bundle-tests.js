@@ -1,5 +1,6 @@
 import {describe, it} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
+import {addBindingMixinTests} from './binding-mixin-tests.js';
 import {addRenderMixinTests} from './render-mixin-tests.js';
 
 async function createCommandEncoder(device) {
@@ -44,27 +45,6 @@ async function createRenderPipeline(device) {
   return pipeline;
 }
 
-async function createBindGroup(device, buffer) {
-  device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
-  const bindGroupLayout = device.createBindGroupLayout({
-    entries: [
-      {
-        binding: 0,
-        visibility: GPUShaderStage.VERTEX,
-        buffer: {},
-      },
-    ],
-  });
-  buffer = buffer || device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
-  const bindGroup = device.createBindGroup({
-    layout: bindGroupLayout,
-    entries: [
-      { binding: 0, resource: { buffer } },
-    ],
-  });
-  return bindGroup;
-}
-
 async function createRenderBundleEncoder(device) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
   return device.createRenderBundleEncoder({
@@ -76,8 +56,7 @@ describe('test render bundle encoder', () => {
 
   addRenderMixinTests({
     makePass: async (device) => {
-      const pass = await createRenderBundleEncoder(device);
-      return pass;
+      return await createRenderBundleEncoder(device);
     },
     endPass(pass) {
       pass.finish();
@@ -106,64 +85,13 @@ describe('test render bundle encoder', () => {
 
   });
 
-  describe('check errors on setBindGroup', () => {
-
-    it('works', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-      const pass = await createRenderPass(device);
-      const bindGroup = await createBindGroup(device);
-      await expectValidationError(false, () => {
-        pass.setBindGroup(0, bindGroup);
-      });
-    });
-
-    it('fails if ended', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-      const pass = await createRenderPass(device);
-      const bindGroup = await createBindGroup(device);
-      pass.end();
-      await expectValidationError(true, () => {
-        pass.setBindGroup(0, bindGroup);
-      });
-    });
-
-    it('bindGroup from different device', async () => {
-      const pass = await createRenderPass();
-      const bindGroup = await createBindGroup();
-      await expectValidationError(true, () => {
-        pass.setBindGroup(0, bindGroup);
-      });
-    });
-
-    it('index < 0', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-      const pass = await createRenderPass(device);
-      const bindGroup = await createBindGroup(device);
-      await expectValidationError(true, () => {
-        pass.setBindGroup(-1, bindGroup);
-      });
-    });
-
-    it('index > max', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-      const pass = await createRenderPass(device);
-      const bindGroup = await createBindGroup(device);
-      await expectValidationError(true, () => {
-        pass.setBindGroup(device.limits.maxBindGroups, bindGroup);
-      });
-    });
-
-    it('fails if buffer destroyed', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-      const pass = await createRenderPass(device);
-      const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
-      const bindGroup = await createBindGroup(device, buffer);
-      buffer.destroy();
-      await expectValidationError(true, () => {
-        pass.setBindGroup(0, bindGroup);
-      });
-    });
-
+  addBindingMixinTests({
+    makePass: async (device) => {
+      return await createRenderBundleEncoder(device);
+    },
+    endPass(pass) {
+      pass.finish();
+    },
   });
 
 });
