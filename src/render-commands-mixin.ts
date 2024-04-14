@@ -73,11 +73,13 @@ function validateValidToDraw(mixin: RenderMixin, info: RenderDrawInfo, fn: Verte
     () => `bindGroupSpaceUsed(${bindGroupSpaceUsed}) + vertexBufferSpaceUsed(${vertexBufferSpaceUsed}) <= device.limits.maxBindGroupsPlusVertexBuffers(${device.limits.maxBindGroupsPlusVertexBuffers})`);
 }
 
-function validateValidToDrawIndexed(mixin: RenderMixin, info: RenderDrawInfo) {
+function validateValidToDrawIndexed(mixin: RenderMixin, info: RenderDrawInfo, fn: VertexBufferValidationFn) {
   assert(!!info.indexBuffer, 'indexBuffer is not set');
   const device = s_objToDevice.get(mixin)!;
   assertNotDestroyed(info.indexBuffer.buffer);
   assert(device === s_objToDevice.get(info.indexBuffer.buffer), 'indexBuffer is not from same device');
+  validateValidToDraw(mixin, info, fn);
+
   const pipelineDescriptor = s_renderPipelineToRenderPipelineDescriptor.get(info.pipeline!)!;
   switch (pipelineDescriptor.primitive?.topology) {
     case 'line-strip':
@@ -172,34 +174,20 @@ export function wrapRenderCommandsMixin<T extends RenderMixin>(
     firstInstance = firstInstance ?? 0;
     const info = s_renderPassToPassInfoMap.get(this)!;
     validateEncoderState(this, info.state);
-    validateValidToDrawIndexed(this, info);
+    validateValidToDrawIndexed(this, info, (slot: number, layout: GPUVertexBufferLayout, vertexBufferBinding: BufferWithOffsetAndSize) => {
+      const bufferSize = bufferSizeFromBufferBinding(vertexBufferBinding);
+      const stride = layout.arrayStride;
+      const lastStride = getLastStride(layout);
+      const strideCount = firstInstance + instanceCount;
+      if (layout.stepMode === 'instance') {
+        const bytesNeeded = (strideCount - 1) * stride + lastStride;
+        assert(bytesNeeded <= bufferSize, () => `slot(${slot}) vertex buffer binding size ${bufferSize} is not large enough for bytes needed(${bytesNeeded})`);
+      }
+    });
     const bufferSize = bufferSizeFromBufferBinding(info.indexBuffer!);
     const indexByteSize = info.indexFormat === 'uint16' ? 2 : 4;
     const bytesNeeded = firstIndex + indexCount * indexByteSize;
     assert(bytesNeeded <= bufferSize, () => `indexBuffer bound size(${bufferSize}) is not large enough for bytesNeeded(${bytesNeeded})`);
-
-    const pipelineDescriptor = s_renderPipelineToRenderPipelineDescriptor.get(info.pipeline!)!;
-    if (pipelineDescriptor.vertex.buffers) {
-      // buffers is sequence so no forEach, convert to array
-      const buffers = toArray(pipelineDescriptor.vertex.buffers);
-      buffers.forEach((layout, slot) => {
-        if (layout) {
-          const vertexBufferBinding = info.vertexBuffers[slot];
-          assert(!!vertexBufferBinding, () => `no vertexBuffer in slot(${slot})`);
-          assertNotDestroyed(vertexBufferBinding.buffer);
-          // don't need to check that vertex buffer is same device as was checked at setVertexBuffer
-
-          const bufferSize = bufferSizeFromBufferBinding(vertexBufferBinding);
-          const stride = layout.arrayStride;
-          const lastStride = getLastStride(layout);
-          const strideCount = firstInstance + instanceCount;
-          if (layout.stepMode === 'instance') {
-            const bytesNeeded = (strideCount - 1) * stride + lastStride;
-            assert(bytesNeeded <= bufferSize, () => `slot(${slot}) vertex buffer binding size ${bufferSize} is not large enough for bytes needed(${bytesNeeded})`);
-          }
-        }
-      });
-    }
   });
 
   const kIndirectDrawParametersSize = 16;
@@ -219,7 +207,7 @@ export function wrapRenderCommandsMixin<T extends RenderMixin>(
   wrapFunctionBefore(API, 'drawIndexedIndirect', function (this: T, [indirectBuffer, indirectOffset]) {
     const info = s_renderPassToPassInfoMap.get(this)!;
     validateEncoderState(this, info.state);
-    validateValidToDrawIndexed(this, info);
+    validateValidToDrawIndexed(this, info, () => {});
     assertNotDestroyed(indirectBuffer);
     const device = s_objToDevice.get(this)!;
     assert(device === s_objToDevice.get(indirectBuffer), 'indirectBuffer is not from same device', [indirectBuffer]);

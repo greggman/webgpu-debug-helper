@@ -324,7 +324,7 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if no missing vertexBuffer', async () => {
+    it('fails if missing vertexBuffer', async () => {
       const { pipeline, device, vertexBuffer0 } = await createRenderPipelineAndRenderPass();
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
@@ -441,7 +441,7 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if no missing vertexBuffer', async () => {
+    it('fails if missing vertexBuffer', async () => {
       const { pipeline, device, vertexBuffer0, indexBuffer } = await createRenderPipelineAndRenderPass();
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
@@ -467,7 +467,7 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if no missing indexBuffer', async () => {
+    it('fails if missing indexBuffer', async () => {
       const { pipeline, device, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndRenderPass();
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
@@ -541,6 +541,215 @@ export function addRenderMixinTests({
       pass.setIndexBuffer(indexBuffer, kIndexFormat);
       await expectValidationError(true, () => {
         pass.drawIndexed(kNumIndices, kNumInstances + 1);
+      });
+      endPass(pass);
+    });
+
+  });
+
+  describe('check errors on drawIndirect', () => {
+
+    it('works', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      await expectValidationError(false, () => {
+        pass.drawIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if pass ended', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      endPass(pass);
+      await expectValidationError(true, () => {
+        pass.drawIndirect(indirectBuffer, 0);
+      });
+    });
+
+    it('fails if no pipeline', async () => {
+      const { device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      await expectValidationError(true, () => {
+        pass.drawIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if missing vertexBuffer', async () => {
+      const { pipeline, device, vertexBuffer0, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      await expectValidationError(true, () => {
+        pass.drawIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if vertexBuffer destroyed', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      vertexBuffer0.destroy();
+      await expectValidationError(true, () => {
+        pass.drawIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if indirectBuffer destroyed', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      indirectBuffer.destroy();
+      await expectValidationError(true, () => {
+        pass.drawIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if indirect offset outside data', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      await expectValidationError(true, () => {
+        pass.drawIndirect(indirectBuffer, indirectBuffer.size - 12);
+      });
+      endPass(pass);
+    });
+
+  });
+
+  describe('check errors on drawIndexedIndirect', () => {
+
+    it('works', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      pass.setIndexBuffer(indexBuffer, kIndexFormat);
+      await expectValidationError(false, () => {
+        pass.drawIndexedIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if pass ended', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      pass.setIndexBuffer(indexBuffer, kIndexFormat);
+      endPass(pass);
+      await expectValidationError(true, () => {
+        pass.drawIndexedIndirect(indirectBuffer, 0);
+      });
+    });
+
+    it('fails if no pipeline', async () => {
+      const { device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      pass.setIndexBuffer(indexBuffer, kIndexFormat);
+      await expectValidationError(true, () => {
+        pass.drawIndexedIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if missing vertexBuffer', async () => {
+      const { pipeline, device, vertexBuffer0, indexBuffer, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setIndexBuffer(indexBuffer, kIndexFormat);
+      await expectValidationError(true, () => {
+        pass.drawIndexedIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if vertexBuffer destroyed', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      pass.setIndexBuffer(indexBuffer, kIndexFormat);
+      vertexBuffer0.destroy();
+      await expectValidationError(true, () => {
+        pass.drawIndexedIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if missing indexBuffer', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      await expectValidationError(true, () => {
+        pass.drawIndexedIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if indexBuffer destroyed', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      pass.setIndexBuffer(indexBuffer, kIndexFormat);
+      indexBuffer.destroy();
+      await expectValidationError(true, () => {
+        pass.drawIndexedIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if indirectBuffer destroyed', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      pass.setIndexBuffer(indexBuffer, kIndexFormat);
+      indirectBuffer.destroy();
+      await expectValidationError(true, () => {
+        pass.drawIndexedIndirect(indirectBuffer, 0);
+      });
+      endPass(pass);
+    });
+
+    it('fails if indirect offset outside data', async () => {
+      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndRenderPass();
+      const pass = await makePass(device);
+      pass.setPipeline(pipeline);
+      pass.setVertexBuffer(0, vertexBuffer0);
+      pass.setVertexBuffer(1, vertexBuffer1);
+      pass.setIndexBuffer(indexBuffer, kIndexFormat);
+      await expectValidationError(true, () => {
+        pass.drawIndexedIndirect(indirectBuffer, indirectBuffer.size - 16);
       });
       endPass(pass);
     });
