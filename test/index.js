@@ -1,4 +1,5 @@
 /* global mocha */
+import './tests/canvas-context-tests.js';
 import './tests/command-encoder-tests.js';
 import './tests/compute-pass-tests.js';
 import './tests/device-tests.js';

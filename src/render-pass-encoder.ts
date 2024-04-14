@@ -11,6 +11,7 @@ import {
 } from './render-commands-mixin.js';
 import {
   assertNotDestroyed,
+  s_objToDevice,
 } from './shared-state.js';
 import {
   s_textureViewToTexture,
@@ -37,6 +38,7 @@ wrapRenderCommandsMixin(GPURenderPassEncoder, s_renderPassToPassInfoMap);
 export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, desc: GPURenderPassDescriptor) {
   let targetWidth: number | undefined;
   let targetHeight: number | undefined;
+  const device = s_objToDevice.get(commandEncoder);
 
   const addView = (attachment: GPURenderPassColorAttachment | GPURenderPassDepthStencilAttachment | null | undefined) => {
     if (!attachment) {
@@ -45,6 +47,7 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
     const {view} = attachment;
     const texture = s_textureViewToTexture.get(view)!;
     assertNotDestroyed(texture);
+    assert(s_objToDevice.get(texture) === device, 'texture is not from same device as command encoder', [texture, commandEncoder]);
     const {width, height} = texture;
     if (targetWidth === undefined) {
       targetWidth = width;

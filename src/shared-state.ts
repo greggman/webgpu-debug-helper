@@ -11,6 +11,7 @@ export type DeviceResource =
   | GPUBindGroup
   | GPUBindGroupLayout
   | GPUBuffer
+  | GPUCanvasContext
   | GPUCommandEncoder
   | GPUComputePassEncoder
   | GPUComputePipeline
