@@ -45,7 +45,8 @@ async function createComputeBindGroupPipeline(device, {
     layout,
     compute: { module },
   });
-  return { pipeline };
+  const indirectBuffer = device.createBuffer({size: 12, usage: GPUBufferUsage.INDIRECT });
+  return { pipeline, indirectBuffer };
 }
 
 describe('test compute pass encoder', () => {
@@ -93,18 +94,107 @@ describe('test compute pass encoder', () => {
 
   });
 
-  addValidateBindGroupTests({
-    makePassAndPipeline: async (device, options) => {
-      const { pipeline } = await createComputeBindGroupPipeline(device, options);
-      const encoder = device.createCommandEncoder();
-      const pass = encoder.beginComputePass();
+  describe('dispatchWorkgroups', () => {
+
+    const tests = [
+      { expectError: false, args: [1], desc: 'works' },
+      { expectError: true, args: [100000000] , desc: 'x too big' },
+      { expectError: true, args: [1, 100000000] , desc: 'y too big' },
+      { expectError: true, args: [1, 1, 100000000] , desc: 'z too big' },
+    ];
+    for (const {expectError, args, desc} of tests) {
+      it(desc, async () => {
+        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+        const pipeline = await createComputePipeline(device);
+        const pass = await createComputePass(device);
+        pass.setPipeline(pipeline);
+        await expectValidationError(expectError, () => {
+          pass.dispatchWorkgroups(...args);
+        });
+      });
+    }
+
+    addValidateBindGroupTests({
+      makePassAndPipeline: async (device, options) => {
+        const { pipeline } = await createComputeBindGroupPipeline(device, options);
+        const encoder = device.createCommandEncoder();
+        const pass = encoder.beginComputePass();
+        pass.setPipeline(pipeline);
+        return {pass, pipeline};
+      },
+      execute(pass) {
+        pass.dispatchWorkgroups(1);
+      },
+      visibility: GPUShaderStage.COMPUTE,
+    });
+
+  });
+
+  describe('dispatchWorkgroupsIndirect', () => {
+
+    it('works', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pipeline = await createComputePipeline(device);
+      const indirectBuffer = device.createBuffer({size: 12, usage: GPUBufferUsage.INDIRECT});
+      const pass = await createComputePass(device);
       pass.setPipeline(pipeline);
-      return {pass, pipeline};
-    },
-    execute(pass) {
-      pass.dispatchWorkgroups(1);
-    },
-    visibility: GPUShaderStage.COMPUTE,
+      await expectValidationError(false, () => {
+        pass.dispatchWorkgroupsIndirect(indirectBuffer, 0);
+      });
+    });
+
+    it('fails if indirectBuffer destroyed', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pipeline = await createComputePipeline(device);
+      const indirectBuffer = device.createBuffer({size: 12, usage: GPUBufferUsage.INDIRECT});
+      const pass = await createComputePass(device);
+      pass.setPipeline(pipeline);
+      indirectBuffer.destroy();
+      await expectValidationError(true, () => {
+        pass.dispatchWorkgroupsIndirect(indirectBuffer, 0);
+      });
+    });
+
+    it('fails if indirect offset outside data', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pipeline = await createComputePipeline(device);
+      const indirectBuffer = device.createBuffer({size: 12, usage: GPUBufferUsage.INDIRECT});
+      const pass = await createComputePass(device);
+      pass.setPipeline(pipeline);
+      await expectValidationError(true, () => {
+        pass.dispatchWorkgroupsIndirect(indirectBuffer, 4);
+      });
+    });
+
+    it('fails if indirect size too small', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pipeline = await createComputePipeline(device);
+      const indirectBuffer = device.createBuffer({size: 8, usage: GPUBufferUsage.INDIRECT});
+      const pass = await createComputePass(device);
+      pass.setPipeline(pipeline);
+      await expectValidationError(true, () => {
+        pass.dispatchWorkgroupsIndirect(indirectBuffer, 0);
+      });
+    });
+
+    addValidateBindGroupTests((() => {
+      let ib;
+      return {
+        makePassAndPipeline: async (device, options) => {
+          const { pipeline, indirectBuffer } = await createComputeBindGroupPipeline(device, options);
+          ib = indirectBuffer;
+          const encoder = device.createCommandEncoder();
+          const pass = encoder.beginComputePass();
+          pass.setPipeline(pipeline);
+          return {pass, pipeline};
+        },
+        execute(pass) {
+          pass.dispatchWorkgroupsIndirect(ib, 0);
+        },
+        visibility: GPUShaderStage.COMPUTE,
+      };
+    })());
+
   });
 
 });

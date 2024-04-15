@@ -8,8 +8,12 @@ import {
   validateEncoderState,
 } from './encoder-utils.js';
 import {
+  assertNotDestroyed,
   s_objToDevice,
 } from './shared-state.js';
+import {
+  bufferUsageToString,
+} from './utils.js';
 import {
   assert,
 } from './validation.js';
@@ -48,11 +52,26 @@ wrapFunctionBefore(GPUComputePassEncoder, 'end', function (this: GPUComputePassE
   unlockCommandEncoder(info.commandEncoder);
 });
 
-wrapFunctionBefore(GPUComputePassEncoder, 'dispatchWorkgroups', function (this: GPUComputePassEncoder) {
+wrapFunctionBefore(GPUComputePassEncoder, 'dispatchWorkgroups', function (this: GPUComputePassEncoder, [workgroupCountX, workgroupCountY = 1, workgroupCountZ = 1]) {
   const info = s_computePassToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   validateEncoderBindGroups(info.bindGroups, info.pipeline);
 
-  // TODO: check device limits (and test)
+  const device = s_objToDevice.get(this)!;
+  assert(workgroupCountX < device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountX(${workgroupCountX} > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
+  assert(workgroupCountY < device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountY(${workgroupCountY} > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
+  assert(workgroupCountZ < device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountZ(${workgroupCountZ} > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
 });
-//wrapFunctionBefore(GPUComputePassEncoder, 'dispatchWorkgroupsIndirect', validateBindGroups);
+
+const kIndirectDispatchWorkgroupsParametersSize = 12;
+wrapFunctionBefore(GPUComputePassEncoder, 'dispatchWorkgroupsIndirect', function (this: GPUComputePassEncoder, [indirectBuffer, indirectOffset]) {
+  const info = s_computePassToPassInfoMap.get(this)!;
+  validateEncoderState(this, info.state);
+  validateEncoderBindGroups(info.bindGroups, info.pipeline);
+  assertNotDestroyed(indirectBuffer);
+  const device = s_objToDevice.get(this)!;
+  assert(device === s_objToDevice.get(indirectBuffer), 'indirectBuffer is not from same device', [indirectBuffer]);
+  assert(!!(indirectBuffer.usage & GPUBufferUsage.INDIRECT), () => `buffer(${bufferUsageToString(indirectBuffer.usage)}) must have usage INDIRECT`, [indirectBuffer, this]);
+  assert(indirectOffset + kIndirectDispatchWorkgroupsParametersSize <= indirectBuffer.size, `indirectOffset(${indirectOffset}) + sizeOfIndirectParameters(${kIndirectDispatchWorkgroupsParametersSize}) > indirectBuffer.size(${indirectBuffer.size})`, [indirectBuffer]);
+  assert(indirectOffset % 4 === 0, () => `indirectOffset(${indirectOffset}) is not multiple of 4`);
+});
