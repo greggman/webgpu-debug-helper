@@ -1,6 +1,9 @@
 # To Do
 
-* add encoder and pass error checking
-* track group layouts,
-* track pipeline layouts,
-* track look up layouts via webgpu-utils
+* query
+* dispatch, dispatchIndirect
+* validate pipeline is compatible with pass
+  * compute pipeline in render pass
+  * render pass in compute
+  * render pipeline targets don't match pass
+  * blend not compatible (can't blend float, int)

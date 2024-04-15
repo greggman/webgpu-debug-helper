@@ -1,6 +1,5 @@
 import {describe, it} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
-import {addBindingMixinTests} from './binding-mixin-tests.js';
 import {addRenderMixinTests} from './render-mixin-tests.js';
 
 async function createCommandEncoder(device) {
@@ -232,15 +231,6 @@ describe('test render pass encoder', () => {
       });
     }
 
-  });
-
-  addBindingMixinTests({
-    makePass: async (device) => {
-      return await createRenderPass(device);
-    },
-    endPass(pass) {
-      pass.end();
-    },
   });
 
 });

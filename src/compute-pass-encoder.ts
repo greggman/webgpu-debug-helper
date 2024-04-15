@@ -1,5 +1,6 @@
 import {
   PassInfo,
+  validateEncoderBindGroups,
   wrapBindingCommandsMixin,
 } from './binding-mixin.js';
 import {
@@ -47,5 +48,11 @@ wrapFunctionBefore(GPUComputePassEncoder, 'end', function (this: GPUComputePassE
   unlockCommandEncoder(info.commandEncoder);
 });
 
-//wrapFunctionAfter(GPUComputePassEncoder, 'dispatchWorkgroups', validateBindGroups);
-//wrapFunctionAfter(GPUComputePassEncoder, 'dispatchWorkgroupsIndirect', validateBindGroups);
+wrapFunctionBefore(GPUComputePassEncoder, 'dispatchWorkgroups', function (this: GPUComputePassEncoder) {
+  const info = s_computePassToPassInfoMap.get(this)!;
+  validateEncoderState(this, info.state);
+  validateEncoderBindGroups(info.bindGroups, info.pipeline);
+
+  // TODO: check device limits (and test)
+});
+//wrapFunctionBefore(GPUComputePassEncoder, 'dispatchWorkgroupsIndirect', validateBindGroups);

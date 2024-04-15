@@ -1,3 +1,4 @@
+import { BindGroupLayoutDescriptorPlus } from './pipeline.js';
 import {
   assert,
   objToString,
@@ -7,7 +8,6 @@ import {
 } from './wrap-api.js';
 
 export type DeviceResource =
-  | GPUTexture
   | GPUBindGroup
   | GPUBindGroupLayout
   | GPUBuffer
@@ -15,10 +15,13 @@ export type DeviceResource =
   | GPUCommandEncoder
   | GPUComputePassEncoder
   | GPUComputePipeline
+  | GPUExternalTexture
   | GPUPipelineLayout
   | GPURenderBundleEncoder
   | GPURenderPassEncoder
   | GPURenderPipeline
+  | GPUSampler
+  | GPUTexture
 
 export const s_objToDevice = new WeakMap<DeviceResource, GPUDevice>();
 
@@ -46,15 +49,9 @@ wrapFunctionBefore(GPUDevice, 'destroy', function (this: GPUDevice) {
   s_destroyedResource.add(this);
 });
 
-// Used because GPUBindGroupDescriptor is sequence, not array
-export type BindGroupDescriptor = {
-  layout: GPUBindGroupLayout,
-  entries: GPUBindGroupEntry[],
-};
-
 export type BindGroupInfo = {
-  //layout: GPUBindGroupLayout | null,
-  desc: BindGroupDescriptor,
+  layoutPlus: BindGroupLayoutDescriptorPlus,
+  entries: GPUBindGroupEntry[],
 };
 
 export const s_bindGroupToInfo = new WeakMap<GPUBindGroup, BindGroupInfo>();

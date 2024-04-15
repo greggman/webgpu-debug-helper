@@ -3,6 +3,11 @@ import {
   validateEncoderState,
 } from './encoder-utils.js';
 import {
+  BindGroupLayoutDescriptorPlus,
+  s_pipelineToReifiedPipelineLayoutDescriptor,
+} from './pipeline.js';
+import {
+  BindGroupInfo,
   assertNotDestroyed,
   s_bindGroupToInfo,
   s_objToDevice,
@@ -16,9 +21,9 @@ import {
 } from './wrap-api.js';
 
 export type BindGroupBinding = {
-  bindGroup?: GPUBindGroup | null | undefined,
+  bindGroup: GPUBindGroup,
   dynamicOffsets?: Uint32Array,
-};
+} | undefined;
 
 export type PassInfo = EncoderInfo & {
   bindGroups: BindGroupBinding[],
@@ -34,8 +39,62 @@ type Ctor<T extends BindingMixin> = {
    prototype: T;
 };
 
+function getResourceFromBindingResource(bindingResource: GPUBindingResource) {
+  if (bindingResource instanceof GPUTextureView) {
+    return s_textureViewToTexture.get(bindingResource)!;
+  } else if (bindingResource instanceof GPUSampler ||
+        bindingResource instanceof GPUExternalTexture) {
+    return bindingResource;
+  } else {
+    return bindingResource.buffer;
+  }
+}
+
+const autoIdRE = /^(.*?)autoId\((\d+)\)/;
+function generateErrorMessageForMismatchedBindGroupLayouts(group: number, bindGroupInfo: BindGroupInfo, bindGroupLayoutDescriptor: BindGroupLayoutDescriptorPlus) {
+  const bgAuto = autoIdRE.exec(bindGroupInfo.layoutPlus.signature);
+  const bglAuto = autoIdRE.exec(bindGroupLayoutDescriptor.signature);
+  if (bgAuto || bglAuto) {
+    // are they both auto?
+    if (!bgAuto === !bglAuto) {
+      if (bgAuto![2] !== bglAuto![2]) {
+      return `bindGroup in group(${group}) is not compatible with pipeline requirements for that group \
+because they are from different layout: 'auto' pipelines.`;
+      }
+    } else {
+      return `bindGroup in group(${group}) is not compatible with pipeline requirements for that group \
+because bindGroup's layout ${bgAuto ? 'is' : 'is not'} from a layout: 'auto' pipeline \
+and the pipeline's bindGroup layout requirements ${bglAuto ? 'is' : 'is not'} from a layout: 'auto' pipeline`;
+    }
+  }
+  return `bindGroup in group(${group}) is not compatible with pipeline requirements for that group
+
+bindGroup.layout = ${JSON.stringify(bindGroupInfo.layoutPlus.bindGroupLayoutDescriptor, null, 2)}
+
+pipeline.group[${group}] requirements = ${JSON.stringify(bindGroupLayoutDescriptor.bindGroupLayoutDescriptor, null, 2)}`;
+}
+
 export function validateEncoderBindGroups(bindGroups: BindGroupBinding[], pipeline?: GPURenderPipeline | GPUComputePipeline) {
   assert(!!pipeline, 'no pipeline set');
+  const device = s_objToDevice.get(pipeline);
+
+  const reifiedPipelineDescriptor = s_pipelineToReifiedPipelineLayoutDescriptor.get(pipeline)!;
+  reifiedPipelineDescriptor.bindGroupLayoutDescriptors.forEach((bindGroupLayoutDescriptor, group) => {
+    const binding = bindGroups[group];
+    assert(!!binding, () => `required bindGroup missing from group(${group})`);
+    const bindGroupInfo = s_bindGroupToInfo.get(binding.bindGroup)!;
+    assert(
+      bindGroupInfo.layoutPlus.signature === bindGroupLayoutDescriptor.signature,
+      () => generateErrorMessageForMismatchedBindGroupLayouts(group, bindGroupInfo, bindGroupLayoutDescriptor),
+    );
+    for (const {binding, resource: bindingResource} of bindGroupInfo.entries) {
+      const resource = getResourceFromBindingResource(bindingResource);
+      if (resource instanceof GPUTexture || resource instanceof GPUBuffer) {
+        assertNotDestroyed(resource);
+      }
+      assert(s_objToDevice.get(resource) === device, () => `texture at binding(${binding}) group(${group}) is not from same device`, [resource]);
+    }
+  });
 
   const bindGroupSpaceUsed = 0;
   return bindGroupSpaceUsed;
@@ -78,7 +137,7 @@ export function wrapBindingCommandsMixin<T extends BindingMixin>(
 
       // Validate resources are not destroyed
       const info = s_bindGroupToInfo.get(bindGroup)!;
-      validateBindGroupResourcesNotDestroyed(info.desc.entries);
+      validateBindGroupResourcesNotDestroyed(info.entries);
 
       // TODO: Validate Dynamic Offsets
       bindGroupBindings[index] = {
@@ -86,10 +145,9 @@ export function wrapBindingCommandsMixin<T extends BindingMixin>(
         dynamicOffsets,
       };
     } else {
-      bindGroupBindings[index] = {
-        bindGroup: undefined,
-      };
+      bindGroupBindings[index] = undefined;
     }
   });
 
 }
+

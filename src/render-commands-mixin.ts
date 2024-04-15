@@ -63,6 +63,7 @@ function validateValidToDraw(mixin: RenderMixin, info: RenderDrawInfo, fn: Verte
     });
   }
 
+  // TODO: test!
   assert(
     bindGroupSpaceUsed + vertexBufferSpaceUsed <= device.limits.maxBindGroupsPlusVertexBuffers,
     () => `bindGroupSpaceUsed(${bindGroupSpaceUsed}) + vertexBufferSpaceUsed(${vertexBufferSpaceUsed}) <= device.limits.maxBindGroupsPlusVertexBuffers(${device.limits.maxBindGroupsPlusVertexBuffers})`);

@@ -1,5 +1,6 @@
 import {describe, it} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
+import {addValidateBindGroupTests} from './binding-mixin-tests.js';
 
 async function createCommandEncoder(device) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
@@ -24,6 +25,27 @@ async function createComputePipeline(device) {
     compute: { module },
   });
   return pipeline;
+}
+
+async function createComputeBindGroupPipeline(device, {
+  resourceWGSL,
+  usageWGSL,
+  layout = 'auto',
+}) {
+  device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
+  const module = device.createShaderModule({
+    code: `
+      ${resourceWGSL}
+      @compute @workgroup_size(1) fn csMain() {
+        ${usageWGSL};
+      }
+    `,
+  });
+  const pipeline = device.createComputePipeline({
+    layout,
+    compute: { module },
+  });
+  return { pipeline };
 }
 
 describe('test compute pass encoder', () => {
@@ -69,6 +91,20 @@ describe('test compute pass encoder', () => {
       });
     });
 
+  });
+
+  addValidateBindGroupTests({
+    makePassAndPipeline: async (device, options) => {
+      const { pipeline } = await createComputeBindGroupPipeline(device, options);
+      const encoder = device.createCommandEncoder();
+      const pass = encoder.beginComputePass();
+      pass.setPipeline(pipeline);
+      return {pass, pipeline};
+    },
+    execute(pass) {
+      pass.dispatchWorkgroups(1);
+    },
+    visibility: GPUShaderStage.COMPUTE,
   });
 
 });

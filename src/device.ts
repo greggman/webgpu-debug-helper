@@ -11,7 +11,11 @@ import {
   createCommandEncoder,
 } from './encoder-utils.js';
 import {
-  s_renderPipelineToRenderPipelineDescriptor,
+  BindGroupLayoutDescriptorPlus,
+  s_bindGroupLayoutToBindGroupLayoutDescriptorPlus,
+  s_pipelineToReifiedPipelineLayoutDescriptor,
+  s_pipelineLayoutToBindGroupLayoutDescriptorsPlus,
+  trackRenderPipelineDescriptor,
 } from './pipeline.js';
 import {
   createRenderBundleEncoder,
@@ -30,11 +34,6 @@ import {
 } from './wrap-api.js';
 
 const s_shaderModuleToDefs = new WeakMap<GPUShaderModule, ShaderDataDefinitions>();
-const s_pipelineToRequiredGroupIndices = new WeakMap<GPUPipelineBase, number[]>();
-const s_layoutToAutoLayoutPipeline = new WeakMap<GPUBindGroupLayout, GPUPipelineBase>();
-
-const s_bindGroupLayoutToBindGroupLayoutDescriptor = new WeakMap<GPUBindGroupLayout, GPUBindGroupLayoutDescriptor>();
-const s_pipelineLayoutToBindGroupLayoutDescriptors = new WeakMap<GPUPipelineLayout, GPUPipelineLayoutDescriptor>();
 
 function addDefs(defs: ShaderDataDefinitions[], stage: GPUProgrammableStage | undefined) {
   if (stage) {
@@ -42,53 +41,98 @@ function addDefs(defs: ShaderDataDefinitions[], stage: GPUProgrammableStage | un
   }
 }
 
-// function trackAutoLayoutPipelineBindGroupLayouts(pipeline, layout) {
-//   if (s_pipelineToRequiredGroupIndices.has(pipeline)) {
-//     s_layoutToAutoLayoutPipeline.set(layout, pipeline);
-//   }
-// }
-
-function trackPipelineLayout(this: GPUDevice, pipelineLayout: GPUPipelineLayout, [desc]: [GPUPipelineLayoutDescriptor]) {
-  // need to copy the description because the user may change it after
-  const pipelineLayoutDescriptor: GPUPipelineLayoutDescriptor = {
-    bindGroupLayouts: [...desc.bindGroupLayouts],
+function reifyBufferLayout(buffer: GPUBufferBindingLayout) {
+  return {
+    type: buffer.type ?? 'uniform',
+    hasDynamicOffset: !!buffer.hasDynamicOffset,
+    minBindingSize: buffer.minBindingSize ?? 0,
   };
-  s_pipelineLayoutToBindGroupLayoutDescriptors.set(pipelineLayout, pipelineLayoutDescriptor);
 }
 
-function copyBindGroupLayoutEntry(entry: GPUBindGroupLayoutEntry): GPUBindGroupLayoutEntry {
-  const { binding, visibility, buffer, sampler, texture, storageTexture, externalTexture } = entry;
+function reifySamplerLayout(sampler: GPUSamplerBindingLayout) {
+  return {
+    type: sampler.type ?? 'filtering',
+  };
+}
+
+function reifyTextureLayout(texture: GPUTextureBindingLayout) {
+  return {
+    sampleType: texture.sampleType ?? 'float',
+    viewDimension: texture.viewDimension ?? '2d',
+    multisampled: !!texture.multisampled,
+  };
+}
+
+function reifyStorageTexture(storageTexture: GPUStorageTextureBindingLayout) {
+  return {
+    access: storageTexture.access ?? 'write-only',
+    format: storageTexture.format,
+    viewDimension: storageTexture.viewDimension ?? '2d',
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function reifyExternalTexture(externalTexture: GPUExternalTextureBindingLayout) {
+  return {
+  };
+}
+
+function reifyBindGroupLayoutEntry({
+    binding,
+    visibility,
+    buffer,
+    sampler,
+    texture,
+    storageTexture,
+    externalTexture,
+  }: GPUBindGroupLayoutEntry): GPUBindGroupLayoutEntry {
   return {
     binding,
     visibility,
-    ...(buffer ?? {...buffer!}),
-    ...(sampler ?? {...sampler!}),
-    ...(texture ?? {...texture!}),
-    ...(storageTexture ?? {...storageTexture!}),
-    ...(externalTexture ?? {...externalTexture!}),
+    ...(buffer && reifyBufferLayout(buffer)),
+    ...(sampler && reifySamplerLayout(sampler)),
+    ...(texture && reifyTextureLayout(texture)),
+    ...(storageTexture && reifyStorageTexture(storageTexture)),
+    ...(externalTexture && reifyExternalTexture(externalTexture)),
   };
 }
 
-function trackBindGroupLayout(this: GPUDevice, bindGroupLayout: GPUBindGroupLayout, [desc]: [GPUBindGroupLayoutDescriptor]) {
-  // need to copy bindGroupLayoutDescriptor as user might change it.
-  const bindGroupLayoutDescriptor: GPUBindGroupLayoutDescriptor = {
-    entries: [...desc.entries].map(copyBindGroupLayoutEntry),
+function bindGroupLayoutDescriptorToBindGroupLayoutDescriptorPlus(
+    src: GPUBindGroupLayoutDescriptor,
+    autoId: number): BindGroupLayoutDescriptorPlus {
+  const bindGroupLayoutDescriptor = {
+    entries: [...src.entries].map(reifyBindGroupLayoutEntry),
   };
-  s_bindGroupLayoutToBindGroupLayoutDescriptor.set(bindGroupLayout, bindGroupLayoutDescriptor);
+  const signature = `${JSON.stringify(bindGroupLayoutDescriptor)}${autoId ? `:autoId(${autoId})` : ''})`;
+  return {
+    bindGroupLayoutDescriptor,
+    signature,
+  };
+}
+
+let s_autoCount = 1;
+function getReifiedPipelineLayoutDescriptor(desc: GPUComputePipelineDescriptor | GPURenderPipelineDescriptor) {
+  if (desc.layout === 'auto') {
+    // It's auto so we need to make a reified pipeline descriptor
+    const defs: ShaderDataDefinitions[] = [];
+    addDefs(defs, (desc as GPURenderPipelineDescriptor).vertex);
+    addDefs(defs, (desc as GPURenderPipelineDescriptor).fragment);
+    addDefs(defs, (desc as GPUComputePipelineDescriptor).compute);
+    const autoId = s_autoCount++;
+    const bindGroupLayoutDescriptors = makeBindGroupLayoutDescriptors(defs, desc).map(b => bindGroupLayoutDescriptorToBindGroupLayoutDescriptorPlus(b, autoId));
+    return {
+      bindGroupLayoutDescriptors,
+    };
+  } else {
+    const bindGroupLayoutDescriptors = s_pipelineLayoutToBindGroupLayoutDescriptorsPlus.get(desc.layout)!;
+    return {
+      bindGroupLayoutDescriptors,
+    };
+  }
 }
 
 function trackPipelineLayouts(device: GPUDevice, pipeline: GPUPipelineBase, desc: GPUComputePipelineDescriptor | GPURenderPipelineDescriptor) {
-    if (desc.layout === 'auto') {
-      const defs: ShaderDataDefinitions[] = [];
-      addDefs(defs, (desc as GPURenderPipelineDescriptor).vertex);
-      addDefs(defs, (desc as GPURenderPipelineDescriptor).fragment);
-      addDefs(defs, (desc as GPUComputePipelineDescriptor).compute);
-      const layoutsDescriptors = makeBindGroupLayoutDescriptors(defs, desc);
-      const requiredGroupIndices = layoutsDescriptors.map((layout, ndx) => [...layout.entries].length > 0 ? ndx : -1).filter(v => v >= 0);
-      s_pipelineToRequiredGroupIndices.set(pipeline, requiredGroupIndices);
-    } else {
-      /* */
-    }
+  s_pipelineToReifiedPipelineLayoutDescriptor.set(pipeline, getReifiedPipelineLayoutDescriptor(desc));
 }
 
 wrapFunctionAfter(GPUDevice, 'createShaderModule', function (this: GPUDevice, module: GPUShaderModule, [desc]: [GPUShaderModuleDescriptor]) {
@@ -119,16 +163,11 @@ wrapFunctionAfter(GPUDevice, 'createBindGroup', function (this: GPUDevice, bindG
     });
   }
   validateBindGroupResourcesNotDestroyed(entries);
+  const layoutPlus = s_bindGroupLayoutToBindGroupLayoutDescriptorPlus.get(layout)!;
   s_bindGroupToInfo.set(bindGroup, {
-    //layout: null,
-    desc: { layout, entries },
+    entries,
+    layoutPlus,
   });
-  const pipeline = s_layoutToAutoLayoutPipeline.get(layout);
-  if (pipeline) {
-    if (s_pipelineToRequiredGroupIndices.has(pipeline)) {
-//      s_bindGroupToLayout.get(bindGroup).set(bindGroup, pipeline);
-    }
-  }
 });
 
 wrapFunctionAfter(GPUDevice, 'createBuffer', function (this: GPUDevice, buffer: GPUBuffer) {
@@ -156,7 +195,7 @@ wrapFunctionAfter(GPUDevice, 'createRenderBundleEncoder', function (this: GPUDev
 wrapFunctionAfter(GPUDevice, 'createRenderPipeline', function (this: GPUDevice, pipeline: GPURenderPipeline, [desc]) {
   assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
-  s_renderPipelineToRenderPipelineDescriptor.set(pipeline, desc);
+  trackRenderPipelineDescriptor(pipeline, desc);
   trackPipelineLayouts(this, pipeline, desc);
 });
 
@@ -169,7 +208,7 @@ wrapFunctionAfter(GPUDevice, 'createComputePipeline', function (this: GPUDevice,
 wrapAsyncFunctionAfter(GPUDevice, 'createRenderPipelineAsync', function (this: GPUDevice, pipeline: GPURenderPipeline, [desc]) {
   assertNotDestroyed(this);
   s_objToDevice.set(pipeline, this);
-  s_renderPipelineToRenderPipelineDescriptor.set(pipeline, desc);
+  trackRenderPipelineDescriptor(pipeline, desc);
   trackPipelineLayouts(this, pipeline, desc);
 });
 
@@ -179,6 +218,19 @@ wrapAsyncFunctionAfter(GPUDevice, 'createComputePipelineAsync', function (this: 
   trackPipelineLayouts(this, pipeline, desc);
 });
 
-wrapFunctionAfter(GPUDevice, 'createBindGroupLayout', trackBindGroupLayout);
-wrapFunctionAfter(GPUDevice, 'createPipelineLayout', trackPipelineLayout);
+wrapFunctionAfter(GPUDevice, 'createBindGroupLayout', function (this: GPUDevice, bindGroupLayout: GPUBindGroupLayout, [desc]) {
+  s_bindGroupLayoutToBindGroupLayoutDescriptorPlus.set(
+    bindGroupLayout,
+    bindGroupLayoutDescriptorToBindGroupLayoutDescriptorPlus(desc, 0),
+  );
+});
+
+wrapFunctionAfter(GPUDevice, 'createPipelineLayout', function (this: GPUDevice, pipelineLayout: GPUPipelineLayout, [desc]) {
+  // need to copy the description because the user may change it after
+  const bglDescriptorsPlus: BindGroupLayoutDescriptorPlus[] =
+    [...desc.bindGroupLayouts].map(bgl =>  s_bindGroupLayoutToBindGroupLayoutDescriptorPlus.get(bgl)!);
+  s_pipelineLayoutToBindGroupLayoutDescriptorsPlus.set(pipelineLayout, bglDescriptorsPlus);
+}
+
+);
 
