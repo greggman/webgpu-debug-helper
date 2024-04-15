@@ -6,7 +6,11 @@ import {
   validateEncoderState,
 } from './encoder-utils.js';
 import {
+  createRenderPassLayout,
+} from './pipeline.js';
+import {
   RenderDrawInfo,
+  RenderPassLayoutInfo,
   wrapRenderCommandsMixin,
 } from './render-commands-mixin.js';
 import {
@@ -17,6 +21,9 @@ import {
   s_textureViewToTexture,
 } from './texture.js';
 import {
+  trimNulls,
+} from './utils.js';
+import {
   assert,
   emitError,
 } from './validation.js';
@@ -24,31 +31,48 @@ import {
   wrapFunctionBefore,
 } from './wrap-api.js';
 
-
 type RenderPassInfo = RenderDrawInfo & {
   commandEncoder: GPUCommandEncoder,
   targetWidth: number,
   targetHeight: number,
+  passLayoutInfo: RenderPassLayoutInfo,
 };
 
 const s_renderPassToPassInfoMap = new WeakMap<GPURenderPassEncoder, RenderPassInfo>();
 
-wrapRenderCommandsMixin(GPURenderPassEncoder, s_renderPassToPassInfoMap);
+function getRenderPassLayout(passEncoder: GPURenderPassEncoder): RenderPassLayoutInfo {
+  return s_renderPassToPassInfoMap.get(passEncoder)!.passLayoutInfo;
+}
+
+wrapRenderCommandsMixin(GPURenderPassEncoder, s_renderPassToPassInfoMap, getRenderPassLayout);
 
 export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, desc: GPURenderPassDescriptor) {
   let targetWidth: number | undefined;
   let targetHeight: number | undefined;
   const device = s_objToDevice.get(commandEncoder);
 
-  const addView = (attachment: GPURenderPassColorAttachment | GPURenderPassDepthStencilAttachment | null | undefined) => {
+  const colorFormats: (GPUTextureFormat | null)[] = [];
+  let passSampleCount = 1;
+  let depthStencilFormat: GPUTextureFormat | undefined;
+
+  const addView = (attachment: GPURenderPassColorAttachment | GPURenderPassDepthStencilAttachment | null | undefined, isDepth?: boolean) => {
     if (!attachment) {
+      if (!isDepth) {
+        colorFormats.push(null);
+      }
       return;
     }
     const {view} = attachment;
     const texture = s_textureViewToTexture.get(view)!;
     assertNotDestroyed(texture);
     assert(s_objToDevice.get(texture) === device, 'texture is not from same device as command encoder', [texture, commandEncoder]);
-    const {width, height} = texture;
+    const {width, height, sampleCount, format} = texture;
+    if (isDepth) {
+      depthStencilFormat = format;
+    } else {
+      colorFormats.push(format);
+    }
+    passSampleCount = sampleCount;
     if (targetWidth === undefined) {
       targetWidth = width;
       targetHeight = height;
@@ -61,10 +85,15 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
       addView(colorAttachment);
   }
 
-  addView(desc.depthStencilAttachment);
+  addView(desc.depthStencilAttachment, true);
 
   assert(targetWidth !== undefined, 'render pass targets width is undefined', [passEncoder]);
   assert(targetHeight !== undefined, 'render pass targets height is undefined', [passEncoder]);
+
+  const renderPassLayout = createRenderPassLayout(
+    trimNulls(colorFormats),
+    passSampleCount,
+    depthStencilFormat);
 
   s_renderPassToPassInfoMap.set(passEncoder, {
     state: 'open',
@@ -73,6 +102,10 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
     targetHeight,
     vertexBuffers: [],
     bindGroups: [],
+    passLayoutInfo: {
+      renderPassLayout,
+      passLayoutSignature: JSON.stringify(renderPassLayout),
+    },
   });
 }
 

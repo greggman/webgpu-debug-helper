@@ -2,7 +2,11 @@ import {describe, it} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
 import {addValidateBindGroupTests} from './binding-mixin-tests.js';
 
-async function createRenderPipeline(device) {
+async function createRenderPipeline(device, {
+  format = 'rgba8unorm',
+  sampleCount,
+  depthStencilFormat,
+} = {}) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
   const module = device.createShaderModule({
     code: `
@@ -37,7 +41,19 @@ async function createRenderPipeline(device) {
         },
       ],
     },
-    fragment: { module, targets: [ { format: 'rgba8unorm' } ]},
+    fragment: { module, targets: [ { format } ]},
+    ...(depthStencilFormat && {
+      depthStencil: {
+        depthWriteEnabled: true,
+        depthCompare: 'less',
+        format: depthStencilFormat,
+      },
+    }),
+    ...(sampleCount && {
+      multisample: {
+        count: sampleCount,
+      },
+    }),
   });
   return pipeline;
 }
@@ -114,6 +130,33 @@ export function addRenderMixinTests({
       const pipeline = await createRenderPipeline(device);
       const pass = await makePass(device);
       endPass(pass);
+      await expectValidationError(true, () => {
+        pass.setPipeline(pipeline);
+      });
+    });
+
+    it('fails if pipeline colorFormats do not match', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pipeline = await createRenderPipeline(device, {format: 'r8unorm'});
+      const pass = await makePass(device);
+      await expectValidationError(true, () => {
+        pass.setPipeline(pipeline);
+      });
+    });
+
+    it('fails if pipeline sampleCount does not match', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pipeline = await createRenderPipeline(device, {sampleCount: 4});
+      const pass = await makePass(device);
+      await expectValidationError(true, () => {
+        pass.setPipeline(pipeline);
+      });
+    });
+
+    it('fails if pipeline depthStencilFormat does not match', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pipeline = await createRenderPipeline(device, {depthStencilFormat: 'depth24plus'});
+      const pass = await makePass(device);
       await expectValidationError(true, () => {
         pass.setPipeline(pipeline);
       });

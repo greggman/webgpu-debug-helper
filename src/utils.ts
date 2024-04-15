@@ -28,6 +28,24 @@ export function roundUp(v: number, align: number) {
   return Math.ceil(v / align) * align;
 }
 
+export function arraysEqual<T>(a: T[], b: T[]) {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; ++i) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function trimNulls<T>(a: (T | null)[]) {
+  const ndx = a.findLastIndex(v => v !== null);
+  return a.slice(0, ndx + 1);
+}
+
 export function reifyGPUOrigin3D(e?: GPUOrigin3D) {
   e = e || [];
   const d = e as GPUOrigin3DDict;

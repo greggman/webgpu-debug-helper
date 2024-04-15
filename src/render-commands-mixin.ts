@@ -13,6 +13,7 @@ import {
   assert,
 } from './validation.js';
 import {
+  RenderPassLayout,
   s_renderPipelineToRenderPipelineDescriptor,
 } from './pipeline.js';
 import {
@@ -139,9 +140,15 @@ type Ctor<T extends RenderMixin> = {
    prototype: T;
 };
 
+export type RenderPassLayoutInfo = {
+  renderPassLayout: RenderPassLayout,
+  passLayoutSignature: string,
+}
+
 export function wrapRenderCommandsMixin<T extends RenderMixin>(
   API: Ctor<T>,
-  s_renderPassToPassInfoMap: WeakMap<T, RenderDrawInfo>) {
+  s_renderPassToPassInfoMap: WeakMap<T, RenderDrawInfo>,
+  getRenderPassInfo: (pass: T) => RenderPassLayoutInfo) {
 
   wrapFunctionBefore(API, 'draw', function (this: T, [vertexCount, instanceCount, firstVertex, firstInstance]) {
     instanceCount = instanceCount ?? 1;
@@ -217,6 +224,17 @@ export function wrapRenderCommandsMixin<T extends RenderMixin>(
     const info = s_renderPassToPassInfoMap.get(this)!;
     validateEncoderState(this, info.state);
     assert(s_objToDevice.get(this) === s_objToDevice.get(pipeline), 'pipeline must be from same device as renderPassEncoder', [pipeline, this]);
+    const pipelineDesc = s_renderPipelineToRenderPipelineDescriptor.get(pipeline)!;
+    const passLayoutInfo = getRenderPassInfo(this);
+    assert(pipelineDesc.passLayoutInfo.passLayoutSignature === passLayoutInfo.passLayoutSignature,
+           () => `pipeline is not compatible with ${this.constructor.name}
+
+${this.constructor.name} expects ${JSON.stringify(passLayoutInfo.renderPassLayout, null, 2)}
+
+pipeline is: ${JSON.stringify(pipelineDesc.passLayoutInfo.renderPassLayout, null, 2)}
+`,
+      [pipeline, this],
+    );
     info.pipeline = pipeline;
   });
 

@@ -1,6 +1,8 @@
 // A normal GPUPipelineDescriptor just has references to GPUBindGroupLayout objects
 // but we need the GPUBindGroupLayoutDescriptor for each. They don't exist for
 
+import { RenderPassLayoutInfo } from './render-commands-mixin.js';
+import { arraysEqual, trimNulls } from './utils.js';
 import { wrapFunctionAfter } from "./wrap-api.js";
 
 // auto layouts.
@@ -28,13 +30,41 @@ function trackNewBindGroupLayout(this: GPUComputePipeline | GPURenderPipeline, l
 wrapFunctionAfter(GPUComputePipeline, 'getBindGroupLayout', trackNewBindGroupLayout);
 wrapFunctionAfter(GPURenderPipeline, 'getBindGroupLayout', trackNewBindGroupLayout);
 
+// We're using JSON.stringify to make a hash/id
+// so we need the properties to be in the same order
+export function createRenderPassLayout(
+  colorFormats: (GPUTextureFormat | null | undefined)[],
+  sampleCount: number,
+  depthStencilFormat?: GPUTextureFormat,
+): RenderPassLayout {
+  return {
+    colorFormats,
+    sampleCount,
+    ...(depthStencilFormat && {depthStencilFormat}),
+  };
+}
+
+export type RenderPassLayout = {
+  colorFormats: (GPUTextureFormat | null | undefined)[];
+  depthStencilFormat?: GPUTextureFormat;
+  sampleCount: number;
+};
+
 type RenderPipelineDescriptor = {
     vertex: GPUVertexState,
     primitive?: GPUPrimitiveState,
     depthStencil?: GPUDepthStencilState,
     multisample?: GPUMultisampleState,
     fragment?: GPUFragmentState,
+    passLayoutInfo: RenderPassLayoutInfo,
 };
+
+export function renderPassLayoutsEqual(a: RenderPassLayout, b: RenderPassLayout) {
+  return a.sampleCount === b.sampleCount &&
+         a.depthStencilFormat === b.depthStencilFormat &&
+         arraysEqual(a.colorFormats, b.colorFormats);
+}
+
 
 export const s_renderPipelineToRenderPipelineDescriptor = new WeakMap<GPURenderPipeline, RenderPipelineDescriptor>();
 export const s_pipelineToReifiedPipelineLayoutDescriptor = new WeakMap<GPUPipelineBase, ReifiedPipelineLayoutDescriptor>();
@@ -176,16 +206,23 @@ function reifyRenderPipelineDescriptor(desc: GPURenderPipelineDescriptor): Rende
     depthStencil,
     multisample,
   } = desc;
+  const renderPassLayout = createRenderPassLayout(
+    fragment ? trimNulls([...fragment.targets].map(t => t ? t.format : null)) : [],
+    multisample?.count || 1,
+    depthStencil?.format);
   return {
     vertex: reifyVertexState(vertex),
     ...(fragment && reifyFragmentState(fragment)),
     ...(primitive && reifyPrimitiveState(primitive)),
     ...(depthStencil && reifyDepthStencilState(depthStencil)),
     ...(multisample && reifyMultisampleState(multisample)),
+    passLayoutInfo: {
+      renderPassLayout,
+      passLayoutSignature: JSON.stringify(renderPassLayout),
+    },
   };
 }
 
 export function trackRenderPipelineDescriptor(pipeline: GPURenderPipeline, desc: GPURenderPipelineDescriptor) {
   s_renderPipelineToRenderPipelineDescriptor.set(pipeline, reifyRenderPipelineDescriptor(desc));
 }
-
