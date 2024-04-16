@@ -1,15 +1,18 @@
 import {describe, it} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
 import {addValidateBindGroupTests} from './binding-mixin-tests.js';
+import {addTimestampWriteTests} from './timestamp-tests.js';
 
 async function createCommandEncoder(device) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
   return device.createCommandEncoder();
 }
 
-async function createComputePass(device, encoder) {
+async function createComputePass(device, encoder, { timestampWrites } = {}) {
   encoder = encoder || await createCommandEncoder(device);
-  const pass = encoder.beginComputePass();
+  const pass = encoder.beginComputePass({
+    ...(timestampWrites && { timestampWrites }),
+  });
   return pass;
 }
 
@@ -68,6 +71,12 @@ describe('test compute pass encoder', () => {
       await expectValidationError(true, async () => {
         pass.end();
       });
+    });
+
+    addTimestampWriteTests({
+      makePass(device, {timestampWrites}) {
+        return createComputePass(device, undefined, { timestampWrites });
+      },
     });
 
   });

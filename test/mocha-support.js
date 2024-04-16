@@ -5,4 +5,3 @@ export const before = globalThis.before;
 export const after = globalThis.after;
 export const beforeEach = globalThis.beforeEach;
 export const afterEach = globalThis.afterEach;
-

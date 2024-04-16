@@ -8,6 +8,9 @@ import {
   validateEncoderState,
 } from './encoder-utils.js';
 import {
+  validateTimestampWrites,
+} from './query-support.js';
+import {
   assertNotDestroyed,
   s_objToDevice,
 } from './shared-state.js';
@@ -28,7 +31,14 @@ type ComputePassInfo = PassInfo & {
 
 const s_computePassToPassInfoMap = new WeakMap<GPUComputePassEncoder, ComputePassInfo>();
 
-export function beginComputePass(commandEncoder: GPUCommandEncoder, passEncoder: GPUComputePassEncoder) {
+export function beginComputePass(commandEncoder: GPUCommandEncoder, passEncoder: GPUComputePassEncoder, desc: GPUComputePassDescriptor | undefined) {
+  const device = s_objToDevice.get(commandEncoder)!;
+  const { timestampWrites } = desc || {};
+
+  if (timestampWrites) {
+    validateTimestampWrites(device, timestampWrites);
+  }
+
   s_computePassToPassInfoMap.set(passEncoder, {
     state: 'open',
     commandEncoder,

@@ -20,10 +20,10 @@ import {
   wrapFunctionBefore,
 } from './wrap-api.js';
 
-wrapFunctionAfter(GPUCommandEncoder, 'beginComputePass', function (this: GPUCommandEncoder, passEncoder: GPUComputePassEncoder) {
+wrapFunctionAfter(GPUCommandEncoder, 'beginComputePass', function (this: GPUCommandEncoder, passEncoder: GPUComputePassEncoder, [desc]) {
   s_objToDevice.set(passEncoder, s_objToDevice.get(this)!);
   lockCommandEncoder(this);
-  beginComputePass(this, passEncoder);
+  beginComputePass(this, passEncoder, desc);
 });
 
 wrapFunctionAfter(GPUCommandEncoder, 'beginRenderPass', function (this: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, [desc]) {
@@ -269,4 +269,18 @@ wrapFunctionBefore(GPUCommandEncoder, 'clearBuffer', function (this: GPUCommandE
   assert(size % 4 === 0, () => `size(${size}) must be multiple of 4`);
   assert(offset % 4 === 0, () => `offset(${offset}) must be multiple of 4`);
   assert(offset + size <= buffer.size, () => `offset(${offset}) + size(${size}) must be <= buffer.size(${buffer.size})`);
+});
+
+wrapFunctionBefore(GPUCommandEncoder, 'resolveQuerySet', function (this: GPUCommandEncoder, [querySet, firstQuery, queryCount, destination, destinationOffset]) {
+  getCommandBufferInfoAndValidateState(this);
+  assertNotDestroyed(querySet);
+  assertNotDestroyed(destination);
+  const device = s_objToDevice.get(this);
+  assert(s_objToDevice.get(querySet) === device, 'querySet not from same device', [querySet]);
+  assert(s_objToDevice.get(destination) === device, 'destination buffer not from same device', [destination]);
+  assert((destination.usage & GPUBufferUsage.QUERY_RESOLVE) !== 0, () => `destination.usage(${bufferUsageToString(destination.usage)} does not contain QUERY_RESOLVE)`, [destination]);
+  assert(firstQuery < querySet.count, () => `firstQuery(${firstQuery}) out of range for querySet.count(${querySet.count})`);
+  assert(firstQuery + queryCount <= querySet.count, () => `firstQuery(${firstQuery}) + queryCount(${queryCount}) > querySet.count(${querySet.count})`);
+  assert(destinationOffset % 256 === 0, () => `destinationOffset(${destinationOffset}) is not multiple of 256`);
+  assert(destinationOffset + queryCount * 8 < destination.size, () => `destinationOffset(${destinationOffset}) + queryCount(${queryCount}) * 8 > destination.size(${destination.size})`);
 });

@@ -9,6 +9,9 @@ import {
   createRenderPassLayout,
 } from './pipeline.js';
 import {
+  validateTimestampWrites,
+} from './query-support.js';
+import {
   getRenderPassLayoutForRenderBundle
 } from './render-bundle-encoder.js';
 import {
@@ -52,7 +55,7 @@ wrapRenderCommandsMixin(GPURenderPassEncoder, s_renderPassToPassInfoMap, getRend
 export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, desc: GPURenderPassDescriptor) {
   let targetWidth: number | undefined;
   let targetHeight: number | undefined;
-  const device = s_objToDevice.get(commandEncoder);
+  const device = s_objToDevice.get(commandEncoder)!;
 
   const colorFormats: (GPUTextureFormat | null)[] = [];
   let passSampleCount = 1;
@@ -84,14 +87,20 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
     }
   };
 
-  for (const colorAttachment of desc.colorAttachments || []) {
+  const { timestampWrites, colorAttachments, depthStencilAttachment } = desc;
+
+  for (const colorAttachment of colorAttachments || []) {
       addView(colorAttachment);
   }
 
-  addView(desc.depthStencilAttachment, true);
+  addView(depthStencilAttachment, true);
 
   assert(targetWidth !== undefined, 'render pass targets width is undefined', [passEncoder]);
   assert(targetHeight !== undefined, 'render pass targets height is undefined', [passEncoder]);
+
+  if (timestampWrites) {
+    validateTimestampWrites(device, timestampWrites);
+  }
 
   const renderPassLayout = createRenderPassLayout(
     trimNulls(colorFormats),

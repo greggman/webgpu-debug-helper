@@ -137,6 +137,7 @@ function trackPipelineLayouts(device: GPUDevice, pipeline: GPUPipelineBase, desc
 
 wrapFunctionAfter(GPUDevice, 'createShaderModule', function (this: GPUDevice, module: GPUShaderModule, [desc]: [GPUShaderModuleDescriptor]) {
   assertNotDestroyed(this);
+  s_objToDevice.set(module, this);
   s_shaderModuleToDefs.set(module, makeShaderDataDefinitions(desc.code));
 });
 
@@ -173,6 +174,11 @@ wrapFunctionAfter(GPUDevice, 'createBindGroup', function (this: GPUDevice, bindG
 wrapFunctionAfter(GPUDevice, 'createBuffer', function (this: GPUDevice, buffer: GPUBuffer) {
   assertNotDestroyed(this);
   s_objToDevice.set(buffer, this);
+});
+
+wrapFunctionAfter(GPUDevice, 'createQuerySet', function (this: GPUDevice, querySet: GPUQuerySet) {
+  assertNotDestroyed(this);
+  s_objToDevice.set(querySet, this);
 });
 
 wrapFunctionAfter(GPUDevice, 'createSampler', function (this: GPUDevice, sampler: GPUSampler) {

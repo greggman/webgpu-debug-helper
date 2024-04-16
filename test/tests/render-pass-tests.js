@@ -1,13 +1,16 @@
 import {describe, it} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
 import {addRenderMixinTests} from './render-mixin-tests.js';
+import {addTimestampWriteTests} from './timestamp-tests.js';
 
 async function createCommandEncoder(device) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
   return device.createCommandEncoder();
 }
 
-async function createRenderPass(device, encoder) {
+async function createRenderPass(device, encoder, {
+  timestampWrites
+} = {}) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
   encoder = encoder || await createCommandEncoder(device);
   const texture = device.createTexture({
@@ -24,6 +27,7 @@ async function createRenderPass(device, encoder) {
         storeOp: 'store',
       },
     ],
+    ...(timestampWrites && { timestampWrites }),
   });
   return pass;
 }
@@ -162,6 +166,11 @@ describe('test render pass encoder', () => {
       });
     });
 
+    addTimestampWriteTests({
+      makePass(device, {timestampWrites}) {
+        return createRenderPass(device, undefined, { timestampWrites });
+      },
+    });
 
   });
 
