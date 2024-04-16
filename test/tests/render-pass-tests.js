@@ -1,7 +1,8 @@
 import {describe, it} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
 import {addRenderMixinTests} from './render-mixin-tests.js';
-import {addTimestampWriteTests} from './timestamp-tests.js';
+import {addTimestampWriteTests, getDeviceWithTimestamp} from './timestamp-tests.js';
+
 
 async function createCommandEncoder(device) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
@@ -9,7 +10,8 @@ async function createCommandEncoder(device) {
 }
 
 async function createRenderPass(device, encoder, {
-  timestampWrites
+  timestampWrites,
+  occlusionQuerySet,
 } = {}) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
   encoder = encoder || await createCommandEncoder(device);
@@ -28,6 +30,7 @@ async function createRenderPass(device, encoder, {
       },
     ],
     ...(timestampWrites && { timestampWrites }),
+    ...(occlusionQuerySet && { occlusionQuerySet }),
   });
   return pass;
 }
@@ -166,6 +169,30 @@ describe('test render pass encoder', () => {
       });
     });
 
+    it('fails if occlusionQuerySet.type is not occlusion', async function () {
+      const device = await getDeviceWithTimestamp(this);
+      const colorTexture = device.createTexture({
+        size: [2, 2],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+      });
+      const occlusionQuerySet = device.createQuerySet({type: 'timestamp', count: 2});
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              view: colorTexture.createView(),
+              clearColor: [0, 0, 0, 0],
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+          ],
+          occlusionQuerySet,
+        });
+      });
+    });
+
     addTimestampWriteTests({
       makePass(device, {timestampWrites}) {
         return createRenderPass(device, undefined, { timestampWrites });
@@ -225,6 +252,126 @@ describe('test render pass encoder', () => {
         pass.executeBundles([bundle]);
       });
 
+    });
+
+  });
+
+  describe('beginOcclusionQuery', () => {
+
+    it('works', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
+      const pass = await createRenderPass(device, undefined, {
+        occlusionQuerySet,
+      });
+
+      await expectValidationError(false, () => {
+        pass.beginOcclusionQuery(0);
+      });
+    });
+
+    it('fails if no occlusionQuerySet on pass', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass(device);
+      await expectValidationError(true, () => {
+        pass.beginOcclusionQuery(0);
+      });
+    });
+
+    it('fails if querySet destroyed', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
+      const pass = await createRenderPass(device, undefined, {
+        occlusionQuerySet,
+      });
+      occlusionQuerySet.destroy();
+
+      await expectValidationError(true, () => {
+        pass.beginOcclusionQuery(0);
+      });
+    });
+
+    it('fails if queryIndex out of range', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
+      const pass = await createRenderPass(device, undefined, {
+        occlusionQuerySet,
+      });
+
+      await expectValidationError(true, () => {
+        pass.beginOcclusionQuery(2);
+      });
+    });
+
+    it('fails if query in progress', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
+      const pass = await createRenderPass(device, undefined, {
+        occlusionQuerySet,
+      });
+
+      pass.beginOcclusionQuery(1);
+      await expectValidationError(true, () => {
+        pass.beginOcclusionQuery(0);
+      });
+    });
+
+    it('fails if queryIndex already used', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
+      const pass = await createRenderPass(device, undefined, {
+        occlusionQuerySet,
+      });
+      pass.beginOcclusionQuery(0);
+      pass.endOcclusionQuery();
+
+      await expectValidationError(true, () => {
+        pass.beginOcclusionQuery(0);
+      });
+    });
+
+  });
+
+  describe('endOcclusionQuery', () => {
+
+    it('works', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
+      const pass = await createRenderPass(device, undefined, {
+        occlusionQuerySet,
+      });
+      pass.beginOcclusionQuery(0);
+
+      await expectValidationError(false, () => {
+        pass.endOcclusionQuery();
+      });
+    });
+
+    it('fails if querySet destroyed', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
+      const pass = await createRenderPass(device, undefined, {
+        occlusionQuerySet,
+      });
+      pass.beginOcclusionQuery(0);
+      occlusionQuerySet.destroy();
+
+      await expectValidationError(true, () => {
+        pass.endOcclusionQuery();
+      });
+    });
+
+
+    it('fails if no query in progress', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
+      const pass = await createRenderPass(device, undefined, {
+        occlusionQuerySet,
+      });
+
+      await expectValidationError(true, () => {
+        pass.endOcclusionQuery();
+      });
     });
 
   });

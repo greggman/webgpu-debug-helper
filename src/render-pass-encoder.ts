@@ -42,6 +42,10 @@ type RenderPassInfo = RenderDrawInfo & {
   targetWidth: number,
   targetHeight: number,
   passLayoutInfo: RenderPassLayoutInfo,
+  occlusionQuerySet?: GPUQuerySet,
+  occlusionIndices: Map<number, Error>,
+  occlusionQueryActive?: Error,
+  occlusionQueryActiveIndex: number,
 };
 
 const s_renderPassToPassInfoMap = new WeakMap<GPURenderPassEncoder, RenderPassInfo>();
@@ -87,7 +91,7 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
     }
   };
 
-  const { timestampWrites, colorAttachments, depthStencilAttachment } = desc;
+  const { timestampWrites, colorAttachments, depthStencilAttachment, occlusionQuerySet } = desc;
 
   for (const colorAttachment of colorAttachments || []) {
       addView(colorAttachment);
@@ -102,6 +106,12 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
     validateTimestampWrites(device, timestampWrites);
   }
 
+  if (occlusionQuerySet) {
+    assertNotDestroyed(occlusionQuerySet);
+    assert(device === s_objToDevice.get(occlusionQuerySet), 'occlusionQuerySet is not from same device', [occlusionQuerySet]);
+    assert(occlusionQuerySet.type === 'occlusion', () => `occlusionQuerySet.type(${occlusionQuerySet.type}) is not 'occlusion'`, [occlusionQuerySet]);
+  }
+
   const renderPassLayout = createRenderPassLayout(
     trimNulls(colorFormats),
     passSampleCount,
@@ -114,6 +124,9 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
     targetHeight,
     vertexBuffers: [],
     bindGroups: [],
+    occlusionQuerySet,
+    occlusionIndices: new Map<number, Error>(),
+    occlusionQueryActiveIndex: -1,
     passLayoutInfo: {
       renderPassLayout,
       passLayoutSignature: JSON.stringify(renderPassLayout),
@@ -151,6 +164,32 @@ bundle is: ${JSON.stringify(bundleDesc.passLayoutInfo.renderPassLayout, null, 2)
   info.vertexBuffers.length = 0;
 });
 
+wrapFunctionBefore(GPURenderPassEncoder, 'beginOcclusionQuery', function (this: GPURenderPassEncoder, [queryIndex]) {
+  const info = s_renderPassToPassInfoMap.get(this)!;
+  validateEncoderState(this, info.state);
+  const { occlusionIndices, occlusionQueryActive, occlusionQuerySet } = info;
+  assert(!!occlusionQuerySet, 'no occlusionQuerySet in pass');
+  assertNotDestroyed(occlusionQuerySet);
+  assert(queryIndex < occlusionQuerySet.count, () => `queryIndex(${queryIndex}) >= occlusionQuerySet.count(${occlusionQuerySet.count})`, [occlusionQuerySet]);
+  const queryErr = occlusionIndices.get(queryIndex);
+  assert(!queryErr, () => `queryIndex(${queryIndex}) was already used in this pass at ${queryErr!.stack}`);
+  assert(!occlusionQueryActive, () => `another query is already active from ${occlusionQueryActive!.stack}`);
+  info.occlusionQueryActive = new Error();
+  info.occlusionQueryActiveIndex = queryIndex;
+});
+
+wrapFunctionBefore(GPURenderPassEncoder, 'endOcclusionQuery', function (this: GPURenderPassEncoder) {
+  const info = s_renderPassToPassInfoMap.get(this)!;
+  validateEncoderState(this, info.state);
+  const { occlusionIndices, occlusionQueryActive, occlusionQueryActiveIndex, occlusionQuerySet } = info;
+  assert(!!info.occlusionQueryActive, 'no occlusion query is active');
+  occlusionIndices.set(occlusionQueryActiveIndex, occlusionQueryActive!);
+  if (occlusionQuerySet) {
+    assertNotDestroyed(occlusionQuerySet);
+  }
+  info.occlusionQueryActive = undefined;
+});
+
 wrapBindingCommandsMixin(GPURenderPassEncoder, s_renderPassToPassInfoMap);
 
 wrapFunctionBefore(GPURenderPassEncoder, 'end', function (this: GPURenderPassEncoder) {
@@ -158,6 +197,7 @@ wrapFunctionBefore(GPURenderPassEncoder, 'end', function (this: GPURenderPassEnc
   validateEncoderState(this, info.state);
   info.state = 'ended';
   unlockCommandEncoder(info.commandEncoder)!;
+  assert(!info.occlusionQueryActive, () => `occlusion queryIndex(${info.occlusionQueryActiveIndex}) is still active`);
 });
 
 wrapFunctionBefore(GPURenderPassEncoder, 'setViewport', function (this: GPURenderPassEncoder, [x, y, width, height, minDepth, maxDepth]: [number, number, number, number, number, number]) {

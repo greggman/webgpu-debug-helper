@@ -2,7 +2,7 @@
 import {describe, it} from '../mocha-support.js';
 import {expectValidationError} from '../js/utils.js';
 
-async function getDeviceWithTimestamp(test) {
+export async function getDeviceWithTimestamp(test) {
   const adapter = await navigator.gpu.requestAdapter();
   if (!adapter.features.has('timestamp-query')) {
     test.skip('timestamp-writes feature not available');
