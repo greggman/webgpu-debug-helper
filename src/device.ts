@@ -175,9 +175,18 @@ wrapFunctionAfter(GPUDevice, 'createBuffer', function (this: GPUDevice, buffer: 
   s_objToDevice.set(buffer, this);
 });
 
+wrapFunctionAfter(GPUDevice, 'createSampler', function (this: GPUDevice, sampler: GPUSampler) {
+  assertNotDestroyed(this);
+  s_objToDevice.set(sampler, this);
+});
+
 wrapFunctionAfter(GPUDevice, 'createTexture', function (this: GPUDevice, texture: GPUTexture) {
   assertNotDestroyed(this);
   s_objToDevice.set(texture, this);
+});
+
+wrapFunctionAfter(GPUDevice, 'importExternalTexture', function (this: GPUDevice, externalTexture: GPUExternalTexture) {
+  s_objToDevice.set(externalTexture, this);
 });
 
 wrapFunctionAfter(GPUDevice, 'createCommandEncoder', function (this: GPUDevice, commandEncoder: GPUCommandEncoder) {

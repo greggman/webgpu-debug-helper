@@ -43,7 +43,7 @@ describe('test device', () => {
 
     });
 
-    /*
+    /* TODO: finish buffer tests
     it('fails if size > buffer.size', async () => {
 
       const device = await (await navigator.gpu.requestAdapter()).requestDevice();
