@@ -5,6 +5,7 @@ import {
   unlockCommandEncoder,
   validateEncoderState,
 } from './encoder-utils.js';
+import { kAllTextureFormatInfo } from './format-info.js';
 import {
   createRenderPassLayout,
 } from './pipeline.js';
@@ -24,9 +25,11 @@ import {
   s_objToDevice,
 } from './shared-state.js';
 import {
+  s_textureViewToDesc,
   s_textureViewToTexture,
 } from './texture.js';
 import {
+  roundUp,
   trimNulls,
 } from './utils.js';
 import {
@@ -37,6 +40,10 @@ import {
   wrapFunctionBefore,
 } from './wrap-api.js';
 
+type InUseMipLevels = Set<number>;
+type InUseDepthOrArrayLayers = Map<number, InUseMipLevels>;
+type InUseTextures = Map<GPUTexture, InUseDepthOrArrayLayers>;
+
 type RenderPassInfo = RenderDrawInfo & {
   commandEncoder: GPUCommandEncoder,
   targetWidth: number,
@@ -46,12 +53,38 @@ type RenderPassInfo = RenderDrawInfo & {
   occlusionIndices: Map<number, Error>,
   occlusionQueryActive?: Error,
   occlusionQueryActiveIndex: number,
+  inuseTextures: InUseTextures,
 };
 
 const s_renderPassToPassInfoMap = new WeakMap<GPURenderPassEncoder, RenderPassInfo>();
 
 function getRenderPassLayout(passEncoder: GPURenderPassEncoder): RenderPassLayoutInfo {
   return s_renderPassToPassInfoMap.get(passEncoder)!.passLayoutInfo;
+}
+
+/*
+function checkTextureNotInUse(inuseTextures: InUseTextures, texture: GPUTexture, fullView: TextureViewDescriptor) {
+  const views = inuseTextures.get(texture);
+  if (!views) {
+    return;
+  }
+}
+*/
+
+function markTextureInUse(inuseTextures: InUseTextures, texture: GPUTexture, view: GPUTextureView) {
+  const fullView = s_textureViewToDesc.get(view)!;
+  const inUseDepthOrArrayLayers = inuseTextures.get(texture) || new Map<number, InUseMipLevels>();
+  inuseTextures.set(texture, inUseDepthOrArrayLayers);
+  for (let l = 0; l < fullView.arrayLayerCount; ++l) {
+    const layer = l + fullView.baseArrayLayer;
+    const inUseMipLevels = inUseDepthOrArrayLayers.get(layer) || new Set<number>();
+    inUseDepthOrArrayLayers.set(layer, inUseMipLevels);
+    for (let m = 0; m < fullView.mipLevelCount; ++m) {
+      const mipLevel = m + fullView.baseMipLevel;
+      assert(!inUseMipLevels.has(mipLevel), () => `mipLevel(${mipLevel}) of layer(${layer}) is already in use`, [texture]);
+      inUseMipLevels.add(mipLevel);
+    }
+  }
 }
 
 wrapRenderCommandsMixin(GPURenderPassEncoder, s_renderPassToPassInfoMap, getRenderPassLayout);
@@ -61,9 +94,12 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
   let targetHeight: number | undefined;
   const device = s_objToDevice.get(commandEncoder)!;
 
+  const inuseTextures = new Map<GPUTexture, InUseDepthOrArrayLayers>();
   const colorFormats: (GPUTextureFormat | null)[] = [];
-  let passSampleCount = 1;
+  let passSampleCount: number | undefined;
   let depthStencilFormat: GPUTextureFormat | undefined;
+  let bytesPerSample = 0;
+  let numAttachments = 0;
 
   const addView = (attachment: GPURenderPassColorAttachment | GPURenderPassDepthStencilAttachment | null | undefined, isDepth?: boolean) => {
     if (!attachment) {
@@ -72,17 +108,28 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
       }
       return;
     }
+    ++numAttachments;
     const {view} = attachment;
     const texture = s_textureViewToTexture.get(view)!;
     assertNotDestroyed(texture);
     assert(s_objToDevice.get(texture) === device, 'texture is not from same device as command encoder', [texture, commandEncoder]);
     const {width, height, sampleCount, format} = texture;
+    const formatInfo = kAllTextureFormatInfo[format];
+    markTextureInUse(inuseTextures, texture, view);
+    const { colorRender, depth, stencil } = formatInfo;
     if (isDepth) {
+      assert(!!depth || !!stencil, () => `format(${format}) is not a depth stencil format`);
       depthStencilFormat = format;
     } else {
       colorFormats.push(format);
+      assert(!!colorRender, () => `format(${format}) is not color renderable`);
+      bytesPerSample += roundUp(colorRender.byteCost, colorRender.alignment);
     }
-    passSampleCount = sampleCount;
+    if (!passSampleCount) {
+      passSampleCount = sampleCount;
+    } else {
+      assert(sampleCount === passSampleCount, 'all attachments do not have the same sampleCount');
+    }
     if (targetWidth === undefined) {
       targetWidth = width;
       targetHeight = height;
@@ -99,8 +146,10 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
 
   addView(depthStencilAttachment, true);
 
-  assert(targetWidth !== undefined, 'render pass targets width is undefined', [passEncoder]);
-  assert(targetHeight !== undefined, 'render pass targets height is undefined', [passEncoder]);
+  assert(numAttachments > 0, 'there must be at least 1 colorAttachment or depthStencilAttachment');
+  assert(numAttachments <= device.limits.maxColorAttachments, () => `numAttachments(${numAttachments}) > device.limits.maxColorAttachments(${device.limits.maxColorAttachments})`);
+  assert(bytesPerSample <= device.limits.maxColorAttachmentBytesPerSample,
+    () => `color attachments bytesPerSample(${bytesPerSample}) > device.limits.maxColorAttachmentBytesPerSample(${device.limits.maxColorAttachmentBytesPerSample})`);
 
   if (timestampWrites) {
     validateTimestampWrites(device, timestampWrites);
@@ -114,14 +163,14 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
 
   const renderPassLayout = createRenderPassLayout(
     trimNulls(colorFormats),
-    passSampleCount,
+    passSampleCount!,
     depthStencilFormat);
 
   s_renderPassToPassInfoMap.set(passEncoder, {
     state: 'open',
     commandEncoder,
-    targetWidth,
-    targetHeight,
+    targetWidth: targetWidth || 0,
+    targetHeight: targetWidth || 0,
     vertexBuffers: [],
     bindGroups: [],
     occlusionQuerySet,
@@ -131,6 +180,7 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
       renderPassLayout,
       passLayoutSignature: JSON.stringify(renderPassLayout),
     },
+    inuseTextures,
   });
 }
 

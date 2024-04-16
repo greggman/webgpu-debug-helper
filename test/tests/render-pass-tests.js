@@ -77,6 +77,102 @@ describe('test render pass encoder', () => {
       });
     });
 
+    it('errors when colorAttachments are not the same sampleCount', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const textures = [1, 4].map(sampleCount => device.createTexture({
+        size: [3, 3],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+        sampleCount,
+      }));
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: textures.map(texture => ({
+            view: texture.createView(),
+            clearColor: [0, 0, 0, 0],
+            loadOp: 'clear',
+            storeOp: 'store',
+          })),
+        });
+      });
+    });
+
+    it('errors when no attachments', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: [],
+        });
+      });
+    });
+
+    it('no error when max bytes per sample', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const textures = [1, 1, 1, 1].map(() => device.createTexture({
+        size: [3, 3],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba16float',
+      }));
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(false, () => {
+        encoder.beginRenderPass({
+          colorAttachments: textures.map(texture => ({
+            view: texture.createView(),
+            clearColor: [0, 0, 0, 0],
+            loadOp: 'clear',
+            storeOp: 'store',
+          })),
+        });
+      });
+    });
+
+    it('error when > max bytes per sample', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const textures = new Array(Math.ceil(device.limits.maxColorAttachmentBytesPerSample / 16) + 1).fill(1).map(() => device.createTexture({
+        size: [3, 3],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba32float',
+      }));
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: textures.map(texture => ({
+            view: texture.createView(),
+            clearColor: [0, 0, 0, 0],
+            loadOp: 'clear',
+            storeOp: 'store',
+          })),
+        });
+      });
+    });
+
+    it('error when > max attachments', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const textures = new Array(device.limits.maxColorAttachments + 1).fill(1).map(() => device.createTexture({
+        size: [3, 3],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'r8unorm',
+      }));
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: textures.map(texture => ({
+            view: texture.createView(),
+            clearColor: [0, 0, 0, 0],
+            loadOp: 'clear',
+            storeOp: 'store',
+          })),
+        });
+      });
+    });
+
     it('errors when depthStencilAttachment is a different size than the colorAttachments', async () => {
       const adapter = await navigator.gpu.requestAdapter();
       const device = await adapter.requestDevice();
@@ -107,6 +203,64 @@ describe('test render pass encoder', () => {
             depthLoadOp: 'clear',
             depthStoreOp: 'store',
           },
+        });
+      });
+    });
+
+    it('fails when the sample layer/level is used more than once', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const colorTexture = device.createTexture({
+        size: [2, 2],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+      });
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              view: colorTexture.createView(),
+              clearColor: [0, 0, 0, 0],
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+            {
+              view: colorTexture.createView(),
+              clearColor: [0, 0, 0, 0],
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+          ],
+        });
+      });
+    });
+
+    it('passes when the sample different layers on the same texture', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const colorTexture = device.createTexture({
+        size: [2, 2, 2],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+      });
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(false, () => {
+        encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              view: colorTexture.createView({baseArrayLayer: 0, arrayLayerCount: 1}),
+              clearColor: [0, 0, 0, 0],
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+            {
+              view: colorTexture.createView({baseArrayLayer: 1, arrayLayerCount: 1}),
+              clearColor: [0, 0, 0, 0],
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+          ],
         });
       });
     });
