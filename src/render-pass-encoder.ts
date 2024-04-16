@@ -9,6 +9,9 @@ import {
   createRenderPassLayout,
 } from './pipeline.js';
 import {
+  getRenderPassLayoutForRenderBundle
+} from './render-bundle-encoder.js';
+import {
   RenderDrawInfo,
   RenderPassLayoutInfo,
   wrapRenderCommandsMixin,
@@ -109,14 +112,34 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
   });
 }
 
-wrapFunctionBefore(GPURenderPassEncoder, 'executeBundles', function (this: GPURenderPassEncoder) {
+wrapFunctionBefore(GPURenderPassEncoder, 'executeBundles', function (this: GPURenderPassEncoder, [bundles]) {
   const info = s_renderPassToPassInfoMap.get(this)!;
+  validateEncoderState(this, info.state);
+  const device = s_objToDevice.get(this)!;
+
+  let bundleCount = 0;
+  for (const bundle of bundles) {
+    assert(s_objToDevice.get(bundle) === device, () => 'bundle[${count} is not from same device as render pass encoder', [bundle]);
+    const count = bundleCount;
+    const bundleDesc = getRenderPassLayoutForRenderBundle(bundle)!;
+    const passLayoutInfo = getRenderPassLayout(this);
+    assert(bundleDesc.passLayoutInfo.passLayoutSignature === passLayoutInfo.passLayoutSignature,
+           () => `bundle[${count}] is not compatible with ${this.constructor.name}
+
+${this.constructor.name} expects ${JSON.stringify(passLayoutInfo.renderPassLayout, null, 2)}
+
+bundle is: ${JSON.stringify(bundleDesc.passLayoutInfo.renderPassLayout, null, 2)}
+`,
+      [bundle, this],
+    );
+    ++bundleCount;
+  }
+
   info.bindGroups.length = 0;
   info.pipeline = undefined;
   info.indexBuffer = undefined;
   info.indexFormat = undefined;
   info.vertexBuffers.length = 0;
-  // TODO: validate bundle stuff
 });
 
 wrapBindingCommandsMixin(GPURenderPassEncoder, s_renderPassToPassInfoMap);

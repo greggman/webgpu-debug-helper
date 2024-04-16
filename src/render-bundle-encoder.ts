@@ -10,10 +10,12 @@ import {
   RenderPassLayoutInfo,
   wrapRenderCommandsMixin,
 } from './render-commands-mixin.js';
+import { s_objToDevice } from './shared-state.js';
 import {
   trimNulls,
 } from './utils.js';
 import {
+  wrapFunctionAfter,
   wrapFunctionBefore,
 } from './wrap-api.js';
 
@@ -23,9 +25,14 @@ type BundleEncoderInfo = RenderDrawInfo & {
 };
 
 const s_bundleEncoderToPassInfoMap = new WeakMap<GPURenderBundleEncoder, BundleEncoderInfo>();
+const s_bundleToPassInfoMap = new WeakMap<GPURenderBundle, BundleEncoderInfo>();
 
 function getRenderPassLayout(bundleEncoder: GPURenderBundleEncoder): RenderPassLayoutInfo {
   return s_bundleEncoderToPassInfoMap.get(bundleEncoder)!.passLayoutInfo;
+}
+
+export function getRenderPassLayoutForRenderBundle(bundle: GPURenderBundle) {
+  return s_bundleToPassInfoMap.get(bundle)!;
 }
 
 wrapRenderCommandsMixin(
@@ -58,4 +65,9 @@ wrapFunctionBefore(GPURenderBundleEncoder, 'finish', function (this: GPURenderBu
   const info = s_bundleEncoderToPassInfoMap.get(this)!;
   validateEncoderState(this, info.state);
   info.state = 'ended';
+});
+
+wrapFunctionAfter(GPURenderBundleEncoder, 'finish', function (this: GPURenderBundleEncoder, bundle: GPURenderBundle) {
+  s_objToDevice.set(bundle, s_objToDevice.get(this)!);
+  s_bundleToPassInfoMap.set(bundle, s_bundleEncoderToPassInfoMap.get(this)!);
 });

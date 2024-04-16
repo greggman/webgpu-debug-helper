@@ -174,6 +174,52 @@ describe('test render pass encoder', () => {
     },
   });
 
+  describe('check errors on executeBundles', () => {
+
+    it('works', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass(device);
+      const bundleEncoder = device.createRenderBundleEncoder({
+        colorFormats: ['rgba8unorm'],
+      });
+      const bundle = bundleEncoder.finish();
+
+      await expectValidationError(false, () => {
+        pass.executeBundles([bundle]);
+      });
+
+    });
+
+    it('fails if bundle is from different device', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass();
+      const bundleEncoder = device.createRenderBundleEncoder({
+        colorFormats: ['rgba8unorm'],
+      });
+      const bundle = bundleEncoder.finish();
+
+      await expectValidationError(true, () => {
+        pass.executeBundles([bundle]);
+      });
+
+    });
+
+    it('fails if bundle incompatible', async () => {
+      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const pass = await createRenderPass(device);
+      const bundleEncoder = device.createRenderBundleEncoder({
+        colorFormats: ['r8unorm'],
+      });
+      const bundle = bundleEncoder.finish();
+
+      await expectValidationError(true, () => {
+        pass.executeBundles([bundle]);
+      });
+
+    });
+
+  });
+
   describe('check errors on setViewport', () => {
 
     const tests = [
