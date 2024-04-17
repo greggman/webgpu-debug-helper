@@ -249,13 +249,13 @@ describe('test render pass encoder', () => {
         encoder.beginRenderPass({
           colorAttachments: [
             {
-              view: colorTexture.createView({baseArrayLayer: 0, arrayLayerCount: 1}),
+              view: colorTexture.createView({dimension: '2d', baseArrayLayer: 0, arrayLayerCount: 1}),
               clearColor: [0, 0, 0, 0],
               loadOp: 'clear',
               storeOp: 'store',
             },
             {
-              view: colorTexture.createView({baseArrayLayer: 1, arrayLayerCount: 1}),
+              view: colorTexture.createView({dimension: '2d', baseArrayLayer: 1, arrayLayerCount: 1}),
               clearColor: [0, 0, 0, 0],
               loadOp: 'clear',
               storeOp: 'store',

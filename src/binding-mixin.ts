@@ -74,6 +74,10 @@ bindGroup.layout = ${JSON.stringify(bindGroupInfo.layoutPlus.bindGroupLayoutDesc
 pipeline.group[${group}] requirements = ${JSON.stringify(bindGroupLayoutDescriptor.bindGroupLayoutDescriptor, null, 2)}`;
 }
 
+//function validateEncoderBindGroupsDoNotAliasAWritableResource() {
+//  //
+//}
+
 export function validateEncoderBindGroups(bindGroups: BindGroupBinding[], pipeline?: GPURenderPipeline | GPUComputePipeline) {
   assert(!!pipeline, 'no pipeline set');
   const device = s_objToDevice.get(pipeline);

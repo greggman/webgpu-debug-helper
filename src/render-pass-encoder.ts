@@ -25,11 +25,14 @@ import {
   s_objToDevice,
 } from './shared-state.js';
 import {
+  TextureViewDescriptor,
   s_textureViewToDesc,
   s_textureViewToTexture,
 } from './texture.js';
 import {
+  logicalMipLevelSpecificTextureExtent,
   roundUp,
+  textureUsageToString,
   trimNulls,
 } from './utils.js';
 import {
@@ -87,6 +90,59 @@ function markTextureInUse(inuseTextures: InUseTextures, texture: GPUTexture, vie
   }
 }
 
+function validateViewAspectIsAllAspectsOfTexture(texture: GPUTexture, aspect: GPUTextureAspect) {
+   const {depth, stencil} = kAllTextureFormatInfo[texture.format];
+   if (depth && stencil) {
+    assert(aspect === 'all', 'aspect must be all for depth-stencil textures', [texture]);
+   } else if (depth) {
+      assert(aspect === 'all' || aspect === 'depth-only',
+        'aspect must be all or depth-only for depth textures', [texture]);
+   } else if (stencil) {
+      assert(aspect === 'all' || aspect === 'stencil-only',
+        'aspect must be all or stencil-only for stencil textures', [texture]);
+   }
+}
+
+function validateRenderableTextureView(texture: GPUTexture, viewDesc: TextureViewDescriptor) {
+  assert((texture.usage & GPUTextureUsage.RENDER_ATTACHMENT) !== 0,
+    () => `texture.usage(${textureUsageToString(texture.usage)}) is missing RENDER_ATTACHMENT`, [texture]
+  );
+  const { dimension, mipLevelCount, arrayLayerCount, aspect } = viewDesc;
+  assert(dimension === '2d' || dimension === '3d', () => `dimension(${dimension}) must be 2d or 3d`);
+  assert(mipLevelCount === 1, () => `mipLevelCount(${mipLevelCount}) must be 1`);
+  assert(arrayLayerCount === 1, () => `arrayLayerCount(${arrayLayerCount}) must be 1`);
+  validateViewAspectIsAllAspectsOfTexture(texture, aspect);
+}
+
+function validateRenderPassColorAttachment(attachment: GPURenderPassColorAttachment, slot: number) {
+  const {view, resolveTarget, depthSlice, loadOp } = attachment;
+  const renderViewDesc = s_textureViewToDesc.get(view)!;
+  const renderTexture = s_textureViewToTexture.get(view)!;
+  const formatInfo = kAllTextureFormatInfo[renderViewDesc.format];
+  validateRenderableTextureView(renderTexture, renderViewDesc);
+  assert(!!formatInfo.colorRender, () => `format(${renderViewDesc.format}) is not color renderable`);
+  if (renderViewDesc.dimension === '3d') {
+    assert(!!depthSlice, () => `attachment(${slot})'s dimension is '3d' but depthSlice is missing`);
+    const [, , d] = logicalMipLevelSpecificTextureExtent(renderTexture, renderViewDesc.baseMipLevel);
+    assert(depthSlice < d, () => `depthSlice(${depthSlice}) must be < depth(${d}) at mipLevel(${renderViewDesc.mipLevelCount}) of texture`, [renderTexture]);
+  } else {
+    assert(depthSlice === undefined, `attachment(${slot}) is not 3d so depthSlice must NOT be provided`);
+  }
+  if (loadOp) {
+    // check that clearValue is valid
+  }
+  if (resolveTarget) {
+    const resolveViewDesc = s_textureViewToDesc.get(resolveTarget)!;
+    const resolveTexture = s_textureViewToTexture.get(resolveTarget)!;
+    const [tw, th] = logicalMipLevelSpecificTextureExtent(renderTexture, renderViewDesc.baseMipLevel);
+    const [rw, rh] = logicalMipLevelSpecificTextureExtent(resolveTexture, resolveViewDesc.baseMipLevel);
+    assert(tw === rw && th === rh, () => `resolveTarget render extent(${rw}, ${rh}) != view render extent (${tw}, ${th})`);
+    assert(renderTexture.sampleCount > 1, 'resolveTarget is set so view texture must have sampleCount > 1', [renderTexture]);
+    assert(resolveTexture.sampleCount === 1, 'resolveTarget.sampleCount must be 1', [resolveTarget]);
+    validateRenderableTextureView(resolveTexture, resolveViewDesc);
+  }
+}
+
 wrapRenderCommandsMixin(GPURenderPassEncoder, s_renderPassToPassInfoMap, getRenderPassLayout);
 
 export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: GPURenderPassEncoder, desc: GPURenderPassDescriptor) {
@@ -101,6 +157,17 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
   let bytesPerSample = 0;
   let numAttachments = 0;
 
+  const checkRenderExtent = (texture: GPUTexture, view: GPUTextureView) => {
+    const desc = s_textureViewToDesc.get(view)!;
+    const [width, height] = logicalMipLevelSpecificTextureExtent(texture, desc.baseMipLevel);
+    if (targetWidth === undefined) {
+      targetWidth = width;
+      targetHeight = height;
+    } else if (targetWidth !== width || targetHeight !== height) {
+      emitError('attachments are not all the same width and height', [view, texture, passEncoder, commandEncoder]);
+    }
+  };
+
   const addView = (attachment: GPURenderPassColorAttachment | GPURenderPassDepthStencilAttachment | null | undefined, isDepth?: boolean) => {
     if (!attachment) {
       if (!isDepth) {
@@ -113,28 +180,23 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
     const texture = s_textureViewToTexture.get(view)!;
     assertNotDestroyed(texture);
     assert(s_objToDevice.get(texture) === device, 'texture is not from same device as command encoder', [texture, commandEncoder]);
-    const {width, height, sampleCount, format} = texture;
+    const {sampleCount, format} = texture;
     const formatInfo = kAllTextureFormatInfo[format];
     markTextureInUse(inuseTextures, texture, view);
     const { colorRender, depth, stencil } = formatInfo;
+    checkRenderExtent(texture, view);
     if (isDepth) {
       assert(!!depth || !!stencil, () => `format(${format}) is not a depth stencil format`);
       depthStencilFormat = format;
     } else {
+      validateRenderPassColorAttachment(attachment as GPURenderPassColorAttachment, colorFormats.length - 1);
       colorFormats.push(format);
-      assert(!!colorRender, () => `format(${format}) is not color renderable`);
-      bytesPerSample += roundUp(colorRender.byteCost, colorRender.alignment);
+      bytesPerSample += roundUp(colorRender!.byteCost, colorRender!.alignment);
     }
     if (!passSampleCount) {
       passSampleCount = sampleCount;
     } else {
       assert(sampleCount === passSampleCount, 'all attachments do not have the same sampleCount');
-    }
-    if (targetWidth === undefined) {
-      targetWidth = width;
-      targetHeight = height;
-    } else if (targetWidth !== width || targetHeight !== height) {
-      emitError('attachments are not all the same width and height', [view, texture, passEncoder, commandEncoder]);
     }
   };
 
