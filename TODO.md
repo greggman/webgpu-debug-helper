@@ -6,3 +6,5 @@
   * enforce render targets vs storage textures
 * enforce storage textures bound write and read
 * enforce storage buffers bound write and read
+* change all tests to use regex/includes
+* change assert to have call stack? eg: error in draw->beginRenderPass->commandEncoder ...

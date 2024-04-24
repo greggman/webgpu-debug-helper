@@ -22,6 +22,42 @@ async function createBindGroup(device, buffer) {
   return bindGroup;
 }
 
+async function createBindGroupWithDynamicOffsets(device) {
+  device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
+  // entries are intentional not in binding order.
+  const bindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 2,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { hasDynamicOffset: true, minBindingSize: 512 },
+      },
+      {
+        binding: 0,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: {},
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { type: 'storage', hasDynamicOffset: true, minBindingSize: 1024 },
+      },
+    ],
+  });
+  const buffer2 = device.createBuffer({size: 1024, usage: GPUBufferUsage.UNIFORM});
+  const buffer0 = device.createBuffer({size: 128, usage: GPUBufferUsage.UNIFORM});
+  const buffer1 = device.createBuffer({size: 2048, usage: GPUBufferUsage.STORAGE});
+  const bindGroup = device.createBindGroup({
+    layout: bindGroupLayout,
+    entries: [
+      { binding: 2, resource: { buffer: buffer2 } },
+      { binding: 1, resource: { buffer: buffer1 } },
+      { binding: 0, resource: { buffer: buffer0 } },
+    ],
+  });
+  return bindGroup;
+}
+
 export function addBindingMixinTests({
   makePass,
   endPass,
@@ -83,6 +119,68 @@ export function addBindingMixinTests({
       await expectValidationError(true, () => {
         pass.setBindGroup(0, bindGroup);
       });
+    });
+
+    const addDynamicOffsetTests = (fn) => {
+      it('works', async () => {
+        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+        const pass = await makePass(device);
+        const bindGroup = await createBindGroupWithDynamicOffsets(device);
+        await expectValidationError(false, () => {
+          pass.setBindGroup(0, bindGroup, ...fn([2048 - 1024, 1024 - 512]));
+        });
+      });
+
+      it('fails if wrong number of dynamic offsets', async () => {
+        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+        const pass = await makePass(device);
+        const bindGroup = await createBindGroupWithDynamicOffsets(device);
+        await expectValidationError('same number of dynamicOffsets', () => {
+          pass.setBindGroup(0, bindGroup, ...fn([0, 0, 0]));
+        });
+      });
+
+      it('fails if dynamic offset out of range', async () => {
+        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+        const pass = await makePass(device);
+        const bindGroup = await createBindGroupWithDynamicOffsets(device);
+        await expectValidationError('dynamic offset is out of range', () => {
+          pass.setBindGroup(0, bindGroup, ...fn([2048, 0]));
+        });
+      });
+
+      it('fails if dynamic offset is not storage aligned', async () => {
+        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+        const pass = await makePass(device);
+        const bindGroup = await createBindGroupWithDynamicOffsets(device);
+        await expectValidationError('device.limits.minStorageBufferOffsetAlignment', () => {
+          pass.setBindGroup(0, bindGroup, ...fn([128, 0]));
+        });
+      });
+
+      it('fails if dynamic offset is not uniform aligned', async () => {
+        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+        const pass = await makePass(device);
+        const bindGroup = await createBindGroupWithDynamicOffsets(device);
+        await expectValidationError('device.limits.minUniformBufferOffsetAlignment', () => {
+          pass.setBindGroup(0, bindGroup, ...fn([0, 128]));
+        });
+      });
+    };
+
+    describe('dynamic offsets (array)', () => {
+
+      addDynamicOffsetTests(v => [v]);
+
+    });
+
+    describe('dynamic offsets (Uint32Array)', () => {
+
+      addDynamicOffsetTests(v => {
+        const a = new Uint32Array(v);
+        return [a, 0, a.length];
+      });
+
     });
 
   });

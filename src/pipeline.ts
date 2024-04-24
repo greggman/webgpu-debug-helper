@@ -5,9 +5,13 @@ import { RenderPassLayoutInfo } from './render-commands-mixin.js';
 import { arraysEqual, trimNulls } from './utils.js';
 import { wrapFunctionAfter } from "./wrap-api.js";
 
-// auto layouts.
+type BindGroupLayoutDescriptor = {
+  entries: GPUBindGroupLayoutEntry[];
+};
+
 export type BindGroupLayoutDescriptorPlus = {
-  bindGroupLayoutDescriptor: GPUBindGroupLayoutDescriptor,
+  bindGroupLayoutDescriptor: BindGroupLayoutDescriptor,
+  dynamicOffsetCount: number,
   signature: string,
 }
 

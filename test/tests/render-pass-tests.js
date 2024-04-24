@@ -99,6 +99,105 @@ describe('test render pass encoder', () => {
       });
     });
 
+    it('works with resolveTarget', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const textures = [4, 1].map(sampleCount => device.createTexture({
+        size: [3, 3],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+        sampleCount,
+      }));
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(false, () => {
+        encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              view: textures[0].createView(),
+              resolveTarget: textures[1].createView(),
+              clearColor: [0, 0, 0, 0],
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+          ],
+        });
+      });
+    });
+
+    it('errors when resolveTarget is not sampleCount 1', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const textures = [4, 4].map(sampleCount => device.createTexture({
+        size: [3, 3],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+        sampleCount,
+      }));
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              view: textures[0].createView(),
+              resolveTarget: textures[1].createView(),
+              clearColor: [0, 0, 0, 0],
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+          ],
+        });
+      });
+    });
+
+    it('errors when resolveTarget is not same size', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const textures = [4, 1].map((sampleCount, i) => device.createTexture({
+        size: [3, 3 + i],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+        sampleCount,
+      }));
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              view: textures[0].createView(),
+              resolveTarget: textures[1].createView(),
+              clearColor: [0, 0, 0, 0],
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+          ],
+        });
+      });
+    });
+
+    it('errors when resolveTarget is not same format', async () => {
+      const adapter = await navigator.gpu.requestAdapter();
+      const device = await adapter.requestDevice();
+      const textures = [4, 1].map((sampleCount, i) => device.createTexture({
+        size: [3, 3],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: ['rgba8unorm', 'r8unorm'][i],
+        sampleCount,
+      }));
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              view: textures[0].createView(),
+              resolveTarget: textures[1].createView(),
+              clearColor: [0, 0, 0, 0],
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+          ],
+        });
+      });
+    });
     it('errors when no attachments', async () => {
       const adapter = await navigator.gpu.requestAdapter();
       const device = await adapter.requestDevice();

@@ -52,6 +52,15 @@ export async function expectValidationError(expectError, fn) {
     if (!error) {
       throw new Error('expected error, no error thrown');
     }
+    if (expectError instanceof RegExp) {
+      if (!expectError.test(error)) {
+        throw new Error(`expected error to match /${expectError}/ but was ${error}`);
+      }
+    } else if (typeof expectError === 'string') {
+      if (!error.toString().includes(expectError)) {
+        throw new Error(`expected error to contain '${expectError}' but was ${error}`);
+      }
+    }
   } else {
     if (error) {
       throw error;

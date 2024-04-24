@@ -119,23 +119,93 @@ export function validateBindGroupResourcesNotDestroyed(entries: GPUBindGroupEntr
   }
 }
 
+/*
+const kStages = [
+  GPUShaderStage.VERTEX,
+  GPUShaderStage.FRAGMENT,
+  GPUShaderStage.COMPUTE,
+];
+
+export function encoderBindGroupsAliasAWritableResource(bindGroups: BindGroupBinding[], pipeline: GPURenderPipeline | GPUComputePipeline) {
+  for (const stage of kStages) {
+    const bufferBindings = new Map<GPUBufferBinding, boolean>();
+    const textureViews = new Map<GPUTextureView, boolean>();
+    for (let bindGroupIndex = 0; bindGroupIndex < bindGroups.length; ++bindGroupIndex) {
+      const bindGroupBinding = bindGroups[bindGroupIndex];
+      if (!bindGroupBinding) {
+        continue;
+      }
+      const bindGroupInfo = s_bindGroupToInfo.get(bindGroupBinding.bindGroup)!;
+      const bindGroupLayoutEntries = bindGroupInfo.layoutPlus.bindGroupLayoutDescriptor
+
+      // check buffers
+      const bufferRanges = ??
+      const bufferEntries = bindGroupLayoutEntries.filter(e => (e is buffer binding && (e.visibility & stage !== 0));
+      for (const entry of bufferEntries) {
+        const resourceWritable = entry.buffer.type === 'storage';
+        for (const [binding, pastResourceWritable] of bufferBindings.entries()) {
+          if ((resourceWritable || pastResourceWritable) && isBufferBindingAliasing()) {
+            return true;
+          }
+        }
+        bufferBindings.set(binding, resourceWritable);
+      }
+
+      // check textures
+      const textureEntries = bindGroupLayoutEntries.filter(e => (e is texture view && (e.visibility & stage !== 0));
+      for (const entry of textureEntries) {
+        const resourceWritable = entry.texture.type === storageTexture access is writable
+        if (entry is not storage texture) continue; //? filter above?
+        for (const [textureView, pastResourceWritable] of textureBinding.entries()) {
+          if ((resourceWritable || pastResourceWritable) && isTextureViewAliasing()) {
+            return true;
+          }
+        }
+        textureViews.set(resource, resourceWritable);
+      }
+    }
+  }
+  return false;
+}
+*/
+
+function* forEachDynamicBinding(info: BindGroupInfo) {
+  let dynamicOffsetIndex = 0;
+  const layout = info.layoutPlus.bindGroupLayoutDescriptor;
+  for (const entry of info.entries) {
+    const bindingDescriptor = layout.entries[entry.binding];
+    if (bindingDescriptor.buffer?.hasDynamicOffset) {
+      const bufferBinding = entry.resource as GPUBufferBinding;
+      const bufferLayout = bindingDescriptor.buffer;
+      yield {bufferBinding, bufferLayout, dynamicOffsetIndex};
+      ++dynamicOffsetIndex;
+    }
+  }
+}
+
 export function wrapBindingCommandsMixin<T extends BindingMixin>(
   API: Ctor<T>,
   s_passToPassInfoMap: WeakMap<T, PassInfo>) {
 
-  wrapFunctionBefore(API, 'setBindGroup', function (this: T, [index, bindGroup, dynamicOffsets]) {
+  wrapFunctionBefore(API, 'setBindGroup', function (this: T, [index, bindGroup, dynamicOffsetsArg, dynamicOffsetDataStart, dynamicOffsetDataLength]) {
     const info = s_passToPassInfoMap.get(this)!;
     validateEncoderState(this, info.state);
     const bindGroupBindings = info.bindGroups;
+
+    const dynamicOffsetCount = bindGroup
+      ? s_bindGroupToInfo.get(bindGroup)!.layoutPlus.dynamicOffsetCount
+      : 0;
+    dynamicOffsetsArg = new Uint32Array(dynamicOffsetsArg || 0);
+    dynamicOffsetDataStart = dynamicOffsetDataStart ?? 0;
+    dynamicOffsetDataLength = dynamicOffsetDataLength ?? dynamicOffsetsArg.length;
+    const dynamicOffsets = dynamicOffsetsArg.slice(dynamicOffsetDataStart, dynamicOffsetDataLength);
+
+    assert(dynamicOffsets.length === dynamicOffsetCount, `there must be the same number of dynamicOffsets(${dynamicOffsets.length}) as the layout requires (${dynamicOffsetCount})`);
 
     const device = s_objToDevice.get(this)!;
     const maxIndex = device.limits.maxBindGroups;
     assert(index >= 0, () => `index(${index}) must be >= 0`);
     assert(index < maxIndex, () => `index(${index}) must be < device.limits.maxBindGroups(${maxIndex})`);
-    // TODO: Get dynamic offsets from layout
-    const dynamicOffsetCount = 0; //bindGroup ? layout.dynamicOffsetCount : 0;
-    dynamicOffsets = dynamicOffsets || new Uint32Array(0);
-    assert(dynamicOffsets.length === dynamicOffsetCount, `there must be the same number of dynamicOffsets(${dynamicOffsets.length}) as the layout requires (${dynamicOffsetCount})`);
     if (bindGroup) {
       assert(device === s_objToDevice.get(bindGroup), () => `bindGroup must be from same device as ${parent.constructor.name}`, [bindGroup, parent]);
 
@@ -143,7 +213,21 @@ export function wrapBindingCommandsMixin<T extends BindingMixin>(
       const info = s_bindGroupToInfo.get(bindGroup)!;
       validateBindGroupResourcesNotDestroyed(info.entries);
 
-      // TODO: Validate Dynamic Offsets
+      // Validate Dynamic Offsets
+      for (const {bufferBinding, bufferLayout, dynamicOffsetIndex} of forEachDynamicBinding(info)) {
+        const dynamicOffset = dynamicOffsets[dynamicOffsetIndex];
+        assert((bufferBinding.offset || 0) + dynamicOffset + (bufferLayout.minBindingSize || 0) <= bufferBinding.buffer.size, 'dynamic offset is out of range');
+        switch (bufferLayout.type) {
+          case 'uniform':
+            assert(dynamicOffset % device.limits.minUniformBufferOffsetAlignment === 0, () => `dynamicOffset[${dynamicOffsetIndex}](${dynamicOffset}) used for a uniform buffer is not a multiple of device.limits.minUniformBufferOffsetAlignment(${device.limits.minUniformBufferOffsetAlignment})`);
+            break;
+          case 'storage':
+          case 'read-only-storage':
+            assert(dynamicOffset % device.limits.minStorageBufferOffsetAlignment === 0, () => `dynamicOffset[${dynamicOffsetIndex}](${dynamicOffset}) used for a uniform buffer is not a multiple of device.limits.minStorageBufferOffsetAlignment(${device.limits.minStorageBufferOffsetAlignment})`);
+            break;
+        }
+      }
+
       bindGroupBindings[index] = {
         bindGroup,
         dynamicOffsets,

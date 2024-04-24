@@ -140,6 +140,10 @@ function validateRenderPassColorAttachment(attachment: GPURenderPassColorAttachm
     assert(renderTexture.sampleCount > 1, 'resolveTarget is set so view texture must have sampleCount > 1', [renderTexture]);
     assert(resolveTexture.sampleCount === 1, 'resolveTarget.sampleCount must be 1', [resolveTarget]);
     validateRenderableTextureView(resolveTexture, resolveViewDesc);
+    assert(resolveViewDesc.format === renderViewDesc.format, () => `resolveTarget.view.format(${resolveViewDesc.format}) must equal target.view.format(${renderViewDesc.format})`);
+    assert(resolveTexture.format === renderTexture.format, () => `resolve texture format(${resolveTexture.format}) must equal target texture format(${renderTexture.format})`);
+    const resolveFormatInfo = kAllTextureFormatInfo[resolveTexture.format];
+    assert(!!resolveFormatInfo?.colorRender?.resolve, () => `resolve texture.format(${resolveTexture.format}) does not support resolving`);
   }
 }
 
@@ -253,7 +257,7 @@ wrapFunctionBefore(GPURenderPassEncoder, 'executeBundles', function (this: GPURe
 
   let bundleCount = 0;
   for (const bundle of bundles) {
-    assert(s_objToDevice.get(bundle) === device, () => 'bundle[${count} is not from same device as render pass encoder', [bundle]);
+    assert(s_objToDevice.get(bundle) === device, () => 'bundle[${count}] is not from same device as render pass encoder', [bundle]);
     const count = bundleCount;
     const bundleDesc = getRenderPassLayoutForRenderBundle(bundle)!;
     const passLayoutInfo = getRenderPassLayout(this);
