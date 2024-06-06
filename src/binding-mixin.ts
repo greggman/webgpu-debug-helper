@@ -9,10 +9,11 @@ import {
 import {
   BindGroupInfo,
   assertNotDestroyed,
+  getIdForObject,
   s_bindGroupToInfo,
   s_objToDevice,
 } from './shared-state.js';
-import { s_textureViewToTexture } from './texture.js';
+import { s_textureViewToDesc, s_textureViewToTexture } from './texture.js';
 import {
   assert,
 } from './validation.js';
@@ -119,14 +120,112 @@ export function validateBindGroupResourcesNotDestroyed(entries: GPUBindGroupEntr
   }
 }
 
-/*
+
+
+type BoundBufferRange = {
+  bindGroupLayoutEntry: GPUBindGroupLayoutEntry,
+  resource: GPUBufferBinding,
+};
+
+function makeIdForBoundBufferRange(boundBufferRange: BoundBufferRange) {
+  const { binding, visibility, buffer: b } = boundBufferRange.bindGroupLayoutEntry;
+  const { type = 'uniform', hasDynamicOffset = false, minBindingSize = 0 } = b!;
+  const { buffer, offset = 0, size } = boundBufferRange.resource;
+  return `
+${binding}]
+${visibility}
+${type}
+${hasDynamicOffset}
+${minBindingSize}
+${getIdForObject(buffer)}
+${offset}
+${size}
+`;
+}
+
+function boundBufferRanges(info: BindGroupInfo, dynamicOffsets: Uint32Array) {
+  const result = new Map<string, BoundBufferRange>();
+  let dynamicOffsetIndex = 0;
+  for (const bindGroupEntry of info.entries) {
+    const bindGroupLayoutEntry = info.layoutPlus.bindGroupLayoutDescriptor.entries[bindGroupEntry.binding];
+    if (!bindGroupLayoutEntry.buffer) {
+      continue;
+    }
+    const bound = {
+      offset: 0,
+      ...bindGroupEntry.resource,
+    } as GPUBufferBinding;
+    if (bindGroupLayoutEntry.buffer.hasDynamicOffset) {
+      bound.offset! += dynamicOffsets[dynamicOffsetIndex++];
+    }
+    const boundBufferRange = {
+      bindGroupLayoutEntry,
+      resource: bound,
+    };
+    result.set(makeIdForBoundBufferRange(boundBufferRange), boundBufferRange);
+  }
+  return result;
+}
+
+function intersect(aStart: number, aLen: number, bStart: number, bLen: number) {
+  const aEnd = aStart + aLen;
+  const bEnd = bStart + bLen;
+  return (aEnd > bStart) && (aStart < bEnd);
+}
+
+function isBufferBindingAliasing(a: GPUBufferBinding, b: GPUBufferBinding) {
+  if (a.buffer !== b.buffer) {
+    return false;
+  }
+  const aSize = a.size ?? a.buffer.size;
+  const bSize = b.size ?? b.buffer.size;
+  const aStart = a.offset ?? 0;
+  const bStart = b.offset ?? 0;
+  return intersect(aStart, aSize, bStart, bSize);
+}
+
+function aspectToBits(aspect: GPUTextureAspect): number {
+  switch (aspect) {
+    case 'stencil-only': return 1;
+    case 'depth-only': return 2;
+    case 'all': return 3;
+  }
+  throw new Error('unreachable');
+}
+
+function isTextureViewAliasing(a: GPUTextureView, b: GPUTextureView) {
+  const aTex = s_textureViewToTexture.get(a);
+  const bTex = s_textureViewToTexture.get(b);
+  if (aTex !== bTex) {
+    return false;
+  }
+  const aInfo = s_textureViewToDesc.get(a)!;
+  const bInfo = s_textureViewToDesc.get(b)!;
+
+  const aAspect = aspectToBits(aInfo.aspect);
+  const bAspect = aspectToBits(bInfo.aspect);
+
+  if ((aAspect & bAspect) === 0) {
+    return false;
+  }
+
+  const layersIntersect = intersect(aInfo.baseArrayLayer, aInfo.arrayLayerCount, bInfo.baseArrayLayer, bInfo.arrayLayerCount);
+  if (!layersIntersect) {
+    return false;
+  }
+  return intersect(aInfo.baseMipLevel, aInfo.mipLevelCount, bInfo.baseMipLevel, bInfo.mipLevelCount);
+}
+
 const kStages = [
   GPUShaderStage.VERTEX,
   GPUShaderStage.FRAGMENT,
   GPUShaderStage.COMPUTE,
 ];
 
-export function encoderBindGroupsAliasAWritableResource(bindGroups: BindGroupBinding[], pipeline: GPURenderPipeline | GPUComputePipeline) {
+export function encoderBindGroupsAliasAWritableResource(
+    bindGroups: BindGroupBinding[],
+    dynamicOffsets: Uint32Array[],
+    bindGroupLayoutDescriptorPlus: BindGroupLayoutDescriptorPlus[]) {
   for (const stage of kStages) {
     const bufferBindings = new Map<GPUBufferBinding, boolean>();
     const textureViews = new Map<GPUTextureView, boolean>();
@@ -136,28 +235,33 @@ export function encoderBindGroupsAliasAWritableResource(bindGroups: BindGroupBin
         continue;
       }
       const bindGroupInfo = s_bindGroupToInfo.get(bindGroupBinding.bindGroup)!;
-      const bindGroupLayoutEntries = bindGroupInfo.layoutPlus.bindGroupLayoutDescriptor
 
       // check buffers
-      const bufferRanges = ??
-      const bufferEntries = bindGroupLayoutEntries.filter(e => (e is buffer binding && (e.visibility & stage !== 0));
-      for (const entry of bufferEntries) {
-        const resourceWritable = entry.buffer.type === 'storage';
-        for (const [binding, pastResourceWritable] of bufferBindings.entries()) {
-          if ((resourceWritable || pastResourceWritable) && isBufferBindingAliasing()) {
+      const bufferRanges = boundBufferRanges(bindGroupInfo, dynamicOffsets[bindGroupIndex]);
+      for (const {bindGroupLayoutEntry, resource} of bufferRanges.values()) {
+        if ((bindGroupLayoutEntry.visibility & stage) === 0) {
+          continue;
+        }
+        const resourceWritable = bindGroupLayoutEntry.buffer!.type === 'storage';
+        for (const [pastResource, pastResourceWritable] of bufferBindings.entries()) {
+          if ((resourceWritable || pastResourceWritable) && isBufferBindingAliasing(pastResource, resource)) {
             return true;
           }
         }
-        bufferBindings.set(binding, resourceWritable);
+        bufferBindings.set(resource, resourceWritable);
       }
 
       // check textures
-      const textureEntries = bindGroupLayoutEntries.filter(e => (e is texture view && (e.visibility & stage !== 0));
+      const textureEntries = bindGroupLayoutDescriptorPlus[bindGroupIndex].bindGroupLayoutDescriptor.entries.filter(e => (e.visibility & stage) !== 0 && (e.texture || e.storageTexture));
       for (const entry of textureEntries) {
-        const resourceWritable = entry.texture.type === storageTexture access is writable
-        if (entry is not storage texture) continue; //? filter above?
-        for (const [textureView, pastResourceWritable] of textureBinding.entries()) {
-          if ((resourceWritable || pastResourceWritable) && isTextureViewAliasing()) {
+        const resource = bindGroupInfo.entries[entry.binding].resource as GPUTextureView;
+        const access = entry.storageTexture?.access;
+        const resourceWritable = access === 'read-write' || access === 'write-only';
+        if (!entry.storageTexture) {
+          continue;
+        }
+        for (const [pastResource, pastResourceWritable] of textureViews.entries()) {
+          if ((resourceWritable || pastResourceWritable) && isTextureViewAliasing(pastResource, resource)) {
             return true;
           }
         }
@@ -167,7 +271,6 @@ export function encoderBindGroupsAliasAWritableResource(bindGroups: BindGroupBin
   }
   return false;
 }
-*/
 
 function* forEachDynamicBinding(info: BindGroupInfo) {
   let dynamicOffsetIndex = 0;
