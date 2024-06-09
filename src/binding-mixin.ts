@@ -298,7 +298,7 @@ export function wrapBindingCommandsMixin<T extends BindingMixin>(
     const dynamicOffsetCount = bindGroup
       ? s_bindGroupToInfo.get(bindGroup)!.layoutPlus.dynamicOffsetCount
       : 0;
-    dynamicOffsetsArg = new Uint32Array(dynamicOffsetsArg || 0);
+    dynamicOffsetsArg = dynamicOffsetsArg ? new Uint32Array(dynamicOffsetsArg) : new Uint32Array(0);
     dynamicOffsetDataStart = dynamicOffsetDataStart ?? 0;
     dynamicOffsetDataLength = dynamicOffsetDataLength ?? dynamicOffsetsArg.length;
     const dynamicOffsets = dynamicOffsetsArg.slice(dynamicOffsetDataStart, dynamicOffsetDataLength);
