@@ -40,7 +40,6 @@
   "homepage": "https://github.com/greggman/webgpu-debug-helper#readme",
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^15.2.3",
-    "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.1.6",
     "@tsconfig/recommended": "^1.0.6",
     "@typescript-eslint/eslint-plugin": "^7.6.0",
@@ -62,6 +61,6 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "webgpu-utils": "^1.7.0"
+    "webgpu-utils": "^1.8.2"
   }
 }
