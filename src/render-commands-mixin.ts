@@ -150,10 +150,10 @@ export function wrapRenderCommandsMixin<T extends RenderMixin>(
   s_renderPassToPassInfoMap: WeakMap<T, RenderDrawInfo>,
   getRenderPassInfo: (pass: T) => RenderPassLayoutInfo) {
 
-  wrapFunctionBefore(API, 'draw', function (this: T, [vertexCount, instanceCount, firstVertex, firstInstance]) {
-    instanceCount = instanceCount ?? 1;
-    firstVertex = firstVertex ?? 0;
-    firstInstance = firstInstance ?? 0;
+  wrapFunctionBefore(API, 'draw', function (this: T, [vertexCount, a_instanceCount, a_firstVertex, a_firstInstance]) {
+    const instanceCount = a_instanceCount ?? 1;
+    const firstVertex = a_firstVertex ?? 0;
+    const firstInstance = a_firstInstance ?? 0;
     const info = s_renderPassToPassInfoMap.get(this)!;
     validateEncoderState(this, info.state);
     validateValidToDraw(this, info, (slot: number, layout: GPUVertexBufferLayout, vertexBufferBinding: BufferWithOffsetAndSize) => {
@@ -170,11 +170,11 @@ export function wrapRenderCommandsMixin<T extends RenderMixin>(
     });
   });
 
-  wrapFunctionBefore(API, 'drawIndexed', function (this: T, [indexCount, instanceCount, firstIndex, /*baseVertex*/, firstInstance]) {
-    instanceCount = instanceCount ?? 1;
-    firstIndex = firstIndex ?? 0;
-    // baseVertex = baseVertex ?? 0;
-    firstInstance = firstInstance ?? 0;
+  wrapFunctionBefore(API, 'drawIndexed', function (this: T, [indexCount, a_instanceCount, a_firstIndex, /*a_baseVertex*/, a_firstInstance]) {
+    const instanceCount = a_instanceCount ?? 1;
+    const firstIndex = a_firstIndex ?? 0;
+    // const baseVertex = a_baseVertex ?? 0;
+    const firstInstance = a_firstInstance ?? 0;
     const info = s_renderPassToPassInfoMap.get(this)!;
     validateEncoderState(this, info.state);
     validateValidToDrawIndexed(this, info, (slot: number, layout: GPUVertexBufferLayout, vertexBufferBinding: BufferWithOffsetAndSize) => {

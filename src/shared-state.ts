@@ -18,6 +18,7 @@ export type DeviceResource =
   | GPUExternalTexture
   | GPUPipelineLayout
   | GPUQuerySet
+  | GPUQueue
   | GPURenderBundle
   | GPURenderBundleEncoder
   | GPURenderPassEncoder
