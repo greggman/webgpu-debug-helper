@@ -236,7 +236,7 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
     state: 'open',
     commandEncoder,
     targetWidth: targetWidth || 0,
-    targetHeight: targetWidth || 0,
+    targetHeight: targetHeight || 0,
     vertexBuffers: [],
     bindGroups: [],
     occlusionQuerySet,
