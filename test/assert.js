@@ -66,7 +66,7 @@ export function assertDeepEqual(actual, expected, msg = '') {
     const onActual = actualKeys.filter(k => !(k in expected));
     const onExpected = expectedKeys.filter(k => !(k in actual));
     if (actualKeys.length !== expectedKeys.length) {
-      throw new Error(`missing keys:\on  actual but not expected: ${onActual}\n  on expected but not actual ${onExpected}`);
+      throw new Error(`missing keys:\n  actual but not expected: ${onActual}\n  on expected but not actual ${onExpected}`);
     }
     for (const key of actualKeys) {
       assertDeepEqual(actual[key], expected[key], `${msg}: for ${key}`);
@@ -88,7 +88,7 @@ export function assertDeepEqualApproximately(actual, expected, range = 1e7, msg 
     const onActual = actualKeys.filter(k => !(k in expected));
     const onExpected = expectedKeys.filter(k => !(k in actual));
     if (actualKeys.length !== expectedKeys.length) {
-      throw new Error(`missing keys:\on  actual but not expected: ${onActual}\n  on expected but not actual ${onExpected}`);
+      throw new Error(`missing keys:\n  actual but not expected: ${onActual}\n  on expected but not actual ${onExpected}`);
     }
     for (const key of actualKeys) {
       assertDeepEqualApproximately(actual[key], expected[key], range, `${msg}: for ${key}`);

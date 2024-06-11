@@ -1,4 +1,3 @@
-import terser from '@rollup/plugin-terser';
 import typescript from '@rollup/plugin-typescript';
 import { nodeResolve } from "@rollup/plugin-node-resolve";
 import fs from 'fs';
@@ -22,6 +21,7 @@ export default [
                 file: `${dist}/${name}.js`,
                 format: 'esm',
                 sourcemap: true,
+                freeze: false,
                 banner,
             },
         ],

@@ -5,7 +5,8 @@
     "module": "NodeNext",
     "outDir": "dist/0.x",
     "moduleResolution": "NodeNext",
-    "declaration": true,
+    "allowJs": true,
+    "declaration": false,
     "typeRoots": [
       "./node_modules/@webgpu/types",
       "./node_modules/@types",
@@ -24,4 +25,7 @@
     "examples/3rdparty/**/*.js",
     "test/mocha.js",
   ],
+  "typeAcquisition": {
+    "include": ["@webgpu/types"]
+  }
 }
