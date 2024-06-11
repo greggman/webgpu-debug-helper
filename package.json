@@ -1,6 +1,6 @@
 {
   "name": "webgpu-debug-helper",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "webgpu debug helper",
   "main": "dist/0.x/webgpu-debug-helper.js",
   "type": "module",
