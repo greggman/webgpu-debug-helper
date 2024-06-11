@@ -1,5 +1,5 @@
-import {describe, it} from '../mocha-support.js';
-import {expectValidationError} from '../js/utils.js';
+import {describe} from '../mocha-support.js';
+import {expectValidationError, itWithDevice} from '../js/utils.js';
 import {addBindingMixinTests} from './binding-mixin-tests.js';
 import {addRenderMixinTests} from './render-mixin-tests.js';
 
@@ -65,16 +65,15 @@ describe('test render bundle encoder', () => {
 
   describe('check errors on setPipeline', () => {
 
-    it('pipeline from different device', async () => {
-      const pipeline = await createRenderPipeline();
+     itWithDevice('pipeline from different device', async (device) => {
+      const pipeline = await createRenderPipeline(device);
       const pass = await createRenderPass();
       await expectValidationError(true, () => {
         pass.setPipeline(pipeline);
       });
     });
 
-    it('fails if ended', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if ended', async (device) => {
       const pipeline = await createRenderPipeline(device);
       const pass = await createRenderPass(device);
       pass.end();

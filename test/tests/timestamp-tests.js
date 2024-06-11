@@ -13,13 +13,28 @@ export async function getDeviceWithTimestamp(test) {
   });
 }
 
+async function itWithDeviceWithTimestamp(desc, fn) {
+  it.call(this, desc, async function () {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter.features.has('timestamp-query')) {
+      this.skip('timestamp-writes feature not available');
+      return null;
+    }
+    const device = await adapter.requestDevice({
+      requiredFeatures: ['timestamp-query'],
+    });
+
+    await fn.call(this, device);
+    device.destroy();
+    return null;
+  });
+}
 export function addTimestampWriteTests({
   makePass,
 }) {
   describe('timestampWrites', () => {
 
-    it('works', async function () {
-      const device = await getDeviceWithTimestamp(this);
+    itWithDeviceWithTimestamp('works', async function (device) {
       const querySet = device.createQuerySet({count: 2, type: 'timestamp'});
 
       await expectValidationError(false, async () => {
@@ -29,8 +44,7 @@ export function addTimestampWriteTests({
       });
     });
 
-    it('fails if query destroyed', async function () {
-      const device = await getDeviceWithTimestamp(this);
+    itWithDeviceWithTimestamp('fails if query destroyed', async function (device) {
       const querySet = device.createQuerySet({count: 2, type: 'timestamp'});
       querySet.destroy();
 
@@ -41,8 +55,7 @@ export function addTimestampWriteTests({
       });
     });
 
-    it('fails if query from different device', async function () {
-      const device = await getDeviceWithTimestamp(this);
+    itWithDeviceWithTimestamp('fails if query from different device', async function (device) {
       const querySet = device.createQuerySet({count: 2, type: 'timestamp'});
 
       const device2 = await getDeviceWithTimestamp(this);
@@ -52,10 +65,11 @@ export function addTimestampWriteTests({
           timestampWrites: { querySet, beginningOfPassWriteIndex: 0, endOfPassWriteIndex: 1 },
         });
       });
+
+      device2.destroy();
     });
 
-    it('fails if query wrong type', async function () {
-      const device = await getDeviceWithTimestamp(this);
+    itWithDeviceWithTimestamp('fails if query wrong type', async function (device) {
       const querySet = device.createQuerySet({count: 2, type: 'occlusion'});
 
       await expectValidationError(true, async () => {
@@ -65,8 +79,7 @@ export function addTimestampWriteTests({
       });
     });
 
-    it('fails if both begin and end not set', async function () {
-      const device = await getDeviceWithTimestamp(this);
+    itWithDeviceWithTimestamp('fails if both begin and end not set', async function (device) {
       const querySet = device.createQuerySet({count: 2, type: 'timestamp'});
 
       await expectValidationError(true, async () => {
@@ -76,8 +89,7 @@ export function addTimestampWriteTests({
       });
     });
 
-    it('fails if begin === end', async function () {
-      const device = await getDeviceWithTimestamp(this);
+    itWithDeviceWithTimestamp('fails if begin === end', async function (device) {
       const querySet = device.createQuerySet({count: 2, type: 'timestamp'});
 
       await expectValidationError(true, async () => {
@@ -87,8 +99,7 @@ export function addTimestampWriteTests({
       });
     });
 
-    it('fails if begin out of range', async function () {
-      const device = await getDeviceWithTimestamp(this);
+    itWithDeviceWithTimestamp('fails if begin out of range', async function (device) {
       const querySet = device.createQuerySet({count: 2, type: 'timestamp'});
 
       await expectValidationError(true, async () => {
@@ -98,8 +109,7 @@ export function addTimestampWriteTests({
       });
     });
 
-    it('fails if end out of range', async function () {
-      const device = await getDeviceWithTimestamp(this);
+    itWithDeviceWithTimestamp('fails if end out of range', async function (device) {
       const querySet = device.createQuerySet({count: 2, type: 'timestamp'});
 
       await expectValidationError(true, async () => {

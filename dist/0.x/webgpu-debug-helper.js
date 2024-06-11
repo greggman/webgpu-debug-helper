@@ -1,4 +1,4 @@
-/* webgpu-debug-helper@0.1.0, license MIT */
+/* webgpu-debug-helper@0.1.1, license MIT */
 // exported from the WebGPU CTS by adding the following line to src/webgpu/format_info.ts
 //
 //    console.log(JSON.stringify(kAllTextureFormatInfo, null, 2));
@@ -1653,7 +1653,7 @@ function textureUsageToString(mask) {
     return bitmaskToString(GPUTextureUsage, mask);
 }
 function unreachable(msg) {
-    throw Error(`unreachable: ${msg || ''}`);
+    throw Error(`unreachable: ${''}`);
 }
 function roundUp(v, align) {
     return Math.ceil(v / align) * align;

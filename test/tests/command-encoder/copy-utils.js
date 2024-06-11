@@ -1,8 +1,8 @@
+import {it} from '../../mocha-support.js';
 import {
   assertTruthy,
 } from '../../assert.js';
-import {it} from '../../mocha-support.js';
-import {expectValidationError, bufferUsageToString, textureUsageToString } from '../../js/utils.js';
+import {expectValidationError, bufferUsageToString, itWithDevice, textureUsageToString } from '../../js/utils.js';
 
 export async function createCommandEncoder(device) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
@@ -25,14 +25,21 @@ export async function createDeviceWith4x4Format16BytesPerPixel() {
   return { device, format };
 }
 
+export function itWithDevice4x4Format16BytesPerPixel(desc, fn) {
+  it.call(this, desc, async () => {
+    const { device, format } = await createDeviceWith4x4Format16BytesPerPixel();
+    await fn.call(this, device, format);
+    device.destroy();
+  });
+}
+
 export function addCopyTests({
   doTest,
   bufferUsage,
   textureUsage,
 }) {
 
-  it('works', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('works', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -50,8 +57,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if encoder is locked', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if encoder is locked', async (device) => {
     const encoder = await createCommandEncoder(device);
     encoder.beginComputePass();
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
@@ -70,8 +76,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if encoder is finished', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if encoder is finished', async (device) => {
     const encoder = await createCommandEncoder(device);
     encoder.finish();
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
@@ -90,8 +95,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if buffer is destroyed', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if buffer is destroyed', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -110,8 +114,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if buffer is from a different device', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if buffer is from a different device', async (device) => {
     const encoder = await createCommandEncoder(device);
     const device2 = await (await navigator.gpu.requestAdapter()).requestDevice();
     const buffer = device2.createBuffer({size: 2048, usage: bufferUsage});
@@ -130,8 +133,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if texture is from a different device', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if texture is from a different device', async (device) => {
     const encoder = await createCommandEncoder(device);
     const device2 = await (await navigator.gpu.requestAdapter()).requestDevice();
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
@@ -150,8 +152,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if bytesPerRow is not multiple of 256', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if bytesPerRow is not multiple of 256', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -169,8 +170,7 @@ export function addCopyTests({
     });
   });
 
-  it(`fails if texture.usage does not include ${textureUsageToString(textureUsage)}`, async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice(`fails if texture.usage does not include ${textureUsageToString(textureUsage)}`, async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -188,8 +188,7 @@ export function addCopyTests({
     });
   });
 
-  it(`fails if buffer.usage does not include ${bufferUsageToString(bufferUsage)}`, async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice(`fails if buffer.usage does not include ${bufferUsageToString(bufferUsage)}`, async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: GPUBufferUsage.UNIFORM});
     const texture = device.createTexture({
@@ -207,8 +206,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if sampleCount not 1', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if sampleCount not 1', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -227,8 +225,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if depth and incorrect aspect', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if depth and incorrect aspect', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -246,8 +243,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if stencil and incorrect aspect', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if stencil and incorrect aspect', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -265,8 +261,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if not write copyable', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if not write copyable', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -284,8 +279,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if origin.x + copySize.width > width', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if origin.x + copySize.width > width', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -303,8 +297,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if origin.y + copySize.height > height', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if origin.y + copySize.height > height', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -322,8 +315,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if origin.z + copySize.depthOrArrayLayers > depthOrArrayLayers', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if origin.z + copySize.depthOrArrayLayers > depthOrArrayLayers', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -341,8 +333,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails copySize.width not multiple of blockWidth', async () => {
-    const { device, format } = await createDeviceWith4x4Format16BytesPerPixel();
+  itWithDevice4x4Format16BytesPerPixel('fails copySize.width not multiple of blockWidth', async (device, format) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -360,8 +351,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails copySize.height not multiple of blockHeight', async () => {
-    const { device, format } = await createDeviceWith4x4Format16BytesPerPixel();
+  itWithDevice4x4Format16BytesPerPixel('fails copySize.height not multiple of blockHeight', async (device, format) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -379,8 +369,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails src offset is not multiple of blockSize in bytes', async () => {
-    const { device, format } = await createDeviceWith4x4Format16BytesPerPixel();
+  itWithDevice4x4Format16BytesPerPixel('fails src offset is not multiple of blockSize in bytes', async (device, format) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -398,8 +387,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails copy.height > 1 and bytesPerRow not set', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails copy.height > 1 and bytesPerRow not set', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -417,8 +405,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails copy.height = 1 and copySize.depthOrArrayLayers > 1 and bytesPerRow not set', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails copy.height = 1 and copySize.depthOrArrayLayers > 1 and bytesPerRow not set', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -436,8 +423,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails copy.height = 1 and copySize.depthOrArrayLayers > 1 and rowsPerImage not set', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails copy.height = 1 and copySize.depthOrArrayLayers > 1 and rowsPerImage not set', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({
@@ -455,8 +441,7 @@ export function addCopyTests({
     });
   });
 
-  it('fails if buffer range out of bounds', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+  itWithDevice('fails if buffer range out of bounds', async (device) => {
     const encoder = await createCommandEncoder(device);
     const buffer = device.createBuffer({size: 2048, usage: bufferUsage});
     const texture = device.createTexture({

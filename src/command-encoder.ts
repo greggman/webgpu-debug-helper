@@ -151,7 +151,7 @@ function validateB2TorT2BCopy(encoder: GPUCommandEncoder, buf: GPUImageCopyBuffe
   assert(device === s_objToDevice.get(tex.texture), 'texture is not from same device as commandEncoder', [tex.texture, encoder]);
 
   validateImageCopyBuffer(buf);
-  const [bufRequiredUsage, texRequiredUsage]: [keyof GPUBufferUsage, keyof GPUTextureUsage] = bufferIsSource
+  const [bufRequiredUsage, texRequiredUsage]: [keyof typeof GPUBufferUsage, keyof typeof GPUTextureUsage] = bufferIsSource
      ? ['COPY_SRC', 'COPY_DST']
      : ['COPY_DST', 'COPY_SRC'];
   assert(!!(buf.buffer.usage & GPUBufferUsage[bufRequiredUsage]), () => `src.usage(${bufferUsageToString(buf.buffer.usage)} missing ${bufRequiredUsage})`, [buf.buffer]);

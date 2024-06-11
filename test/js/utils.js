@@ -1,3 +1,5 @@
+import {it} from '../mocha-support.js';
+
 function saveFunctionsOfClass(obj) {
   const desc = Object.getOwnPropertyDescriptors(obj);
   return Object.entries(desc)
@@ -66,4 +68,13 @@ export async function expectValidationError(expectError, fn) {
       throw error;
     }
   }
+}
+
+export function itWithDevice(desc, fn) {
+  it.call(this, desc, async () => {
+    const adapter = await navigator.gpu.requestAdapter();
+    const device = await adapter.requestDevice();
+    await fn.call(this, device);
+    device.destroy();
+  });
 }
