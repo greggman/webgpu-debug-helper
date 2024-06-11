@@ -6,8 +6,7 @@
 
 This script makes it easier to debug WebGPU apps.
 
-note: this script is a work in progress. Pass encoder checking
-is barely implemented.
+note: this script is a work in progress. 
 
 You can use it in your own projects via a script OR, you can
 [use it as an extension](https://github.com/greggman/webgpu-dev-extension).
@@ -22,11 +21,12 @@ to use this script version.
   This is in contrast to normal WebGPU where errors are returned asynchronously
   and so the command that caused the error is long forgotten.
 
-* It adds errors to command encoders and pass encoders
+* It adds errors to command encoders and pass encoders (these throw)
 
   In normal WebGPU, command encoders and pass encoders often do not report errors.
-  Rather, they record the error, make the encoder as *invalid*, and then only report
-  the error when the encoder is ended/finished. This can make it hard to find errors.
+  Rather, they record the error, mark the encoder as *invalid*, and then only report
+  the error when the encoder is ended/finished. This can make it hard to find errors
+  as they might have happened hundreds or thousands of calls ago.
 
   With this script, many of these types of errors will be generated immediately.
 
@@ -49,6 +49,12 @@ or
 
 ```js
 import 'https://greggman.github.io/webgpu-debug-helper/dist/0.x/webgpu-debug-helper.js';
+```
+
+or
+
+```html
+<script type="module" src="https://greggman.github.io/webgpu-debug-helper/dist/0.x/webgpu-debug-helper.js" crossorigin>
 ```
 
 There is nothing else to do. The webgpu-debug-helper will wrap the WebGPU API and
