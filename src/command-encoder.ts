@@ -282,5 +282,5 @@ wrapFunctionBefore(GPUCommandEncoder, 'resolveQuerySet', function (this: GPUComm
   assert(firstQuery < querySet.count, () => `firstQuery(${firstQuery}) out of range for querySet.count(${querySet.count})`);
   assert(firstQuery + queryCount <= querySet.count, () => `firstQuery(${firstQuery}) + queryCount(${queryCount}) > querySet.count(${querySet.count})`);
   assert(destinationOffset % 256 === 0, () => `destinationOffset(${destinationOffset}) is not multiple of 256`);
-  assert(destinationOffset + queryCount * 8 < destination.size, () => `destinationOffset(${destinationOffset}) + queryCount(${queryCount}) * 8 > destination.size(${destination.size})`);
+  assert(destinationOffset + queryCount * 8 <= destination.size, () => `destinationOffset(${destinationOffset}) + queryCount(${queryCount}) * 8 > destination.size(${destination.size})`);
 });
