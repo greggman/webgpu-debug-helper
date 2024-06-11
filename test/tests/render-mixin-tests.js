@@ -1,5 +1,5 @@
-import {describe, it} from '../mocha-support.js';
-import {expectValidationError} from '../js/utils.js';
+import {describe} from '../mocha-support.js';
+import {expectValidationError, itWithDevice} from '../js/utils.js';
 import {addValidateBindGroupTests} from './binding-mixin-tests.js';
 
 async function createRenderPipeline(device, {
@@ -117,16 +117,15 @@ export function addRenderMixinTests({
 
   describe('check errors on setPipeline', () => {
 
-    it('pipeline from different device', async () => {
-      const pipeline = await createRenderPipeline();
+    itWithDevice('pipeline from different device', async (device) => {
+      const pipeline = await createRenderPipeline(device);
       const pass = await makePass();
       await expectValidationError(true, () => {
         pass.setPipeline(pipeline);
       });
     });
 
-    it('fails if ended', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('fails if ended', async (device) => {
       const pipeline = await createRenderPipeline(device);
       const pass = await makePass(device);
       endPass(pass);
@@ -135,8 +134,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('fails if pipeline colorFormats do not match', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('fails if pipeline colorFormats do not match', async (device) => {
       const pipeline = await createRenderPipeline(device, {format: 'r8unorm'});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -144,8 +142,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('fails if pipeline sampleCount does not match', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('fails if pipeline sampleCount does not match', async (device) => {
       const pipeline = await createRenderPipeline(device, {sampleCount: 4});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -153,8 +150,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('fails if pipeline depthStencilFormat does not match', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('fails if pipeline depthStencilFormat does not match', async (device) => {
       const pipeline = await createRenderPipeline(device, {depthStencilFormat: 'depth24plus'});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -167,23 +163,22 @@ export function addRenderMixinTests({
 
   describe('check errors on setVertexBuffer', () => {
 
-    it('works with null', async () => {
-      const pass = await makePass();
+    itWithDevice('works with null', async (device) => {
+      const pass = await makePass(device);
       await expectValidationError(false, () => {
         pass.setVertexBuffer(0, null);
       });
     });
 
-    it('fails with null if ended', async () => {
-      const pass = await makePass();
+    itWithDevice('fails with null if ended', async (device) => {
+      const pass = await makePass(device);
       endPass(pass);
       await expectValidationError(true, () => {
         pass.setVertexBuffer(0, null);
       });
     });
 
-    it('works with buffer', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('works with buffer', async (device) => {
       const pass = await makePass(device);
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.VERTEX});
       await expectValidationError(false, () => {
@@ -191,8 +186,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('errors if buffer is destroyed', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('errors if buffer is destroyed', async (device) => {
       const pass = await makePass(device);
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.VERTEX});
       buffer.destroy();
@@ -201,39 +195,35 @@ export function addRenderMixinTests({
       });
     });
 
-    it('slot < 0', async () => {
-      const pass = await makePass();
+    itWithDevice('slot < 0', async (device) => {
+      const pass = await makePass(device);
       await expectValidationError(true, () => {
         pass.setVertexBuffer(-1, null);
       });
     });
 
-    it('slot > max', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('slot > max', async (device) => {
       const pass = await makePass(device);
       await expectValidationError(true, () => {
         pass.setVertexBuffer(device.limits.maxVertexBuffers, null);
       });
     });
 
-    it('offset is not multiple of 4', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('offset is not multiple of 4', async (device) => {
       const pass = await makePass(device);
       await expectValidationError(true, () => {
         pass.setVertexBuffer(0, null, 3);
       });
     });
 
-    it('offset + size > bufferSize (no buffer)', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('offset + size > bufferSize (no buffer)', async (device) => {
       const pass = await makePass(device);
       await expectValidationError(true, () => {
         pass.setVertexBuffer(0, null, 4);
       });
     });
 
-    it('offset + size > bufferSize (w/buffer via size)', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('offset + size > bufferSize (w/buffer via size)', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.VERTEX});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -241,8 +231,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('offset + size > bufferSize (w/buffer via offset + size)', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('offset + size > bufferSize (w/buffer via offset + size)', async (device) => {
       const buffer = device.createBuffer({size: 8, usage: GPUBufferUsage.VERTEX});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -250,8 +239,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('buffer from different device', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('buffer from different device', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.VERTEX});
       const pass = await makePass();
       await expectValidationError(true, () => {
@@ -259,8 +247,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('buffer not VERTEX', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('buffer not VERTEX', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -272,8 +259,7 @@ export function addRenderMixinTests({
 
   describe('check errors on setIndexBuffer', () => {
 
-    it('works', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('works', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
       const pass = await makePass(device);
       await expectValidationError(false, () => {
@@ -281,8 +267,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('errors if buffer is destroyed', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('errors if buffer is destroyed', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
       buffer.destroy();
       const pass = await makePass(device);
@@ -291,8 +276,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('fails if ended', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('fails if ended', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
       const pass = await makePass(device);
       endPass(pass);
@@ -301,8 +285,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('offset is not multiple of 2 when format is uint16', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('offset is not multiple of 2 when format is uint16', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -310,8 +293,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('offset is not multiple of 4 when format is uint32', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('offset is not multiple of 4 when format is uint32', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -319,8 +301,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('offset + size > buffer.size', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('offset + size > buffer.size', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -328,8 +309,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('offset + size > buffer.size (offset + size)', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('offset + size > buffer.size (offset + size)', async (device) => {
       const buffer = device.createBuffer({size: 8, usage: GPUBufferUsage.INDEX});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -337,8 +317,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('buffer from different device', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('buffer from different device', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.INDEX});
       const pass = await makePass();
       await expectValidationError(true, () => {
@@ -346,8 +325,7 @@ export function addRenderMixinTests({
       });
     });
 
-    it('buffer not INDEX', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('buffer not INDEX', async (device) => {
       const buffer = device.createBuffer({size: 4, usage: GPUBufferUsage.VERTEX});
       const pass = await makePass(device);
       await expectValidationError(true, () => {
@@ -359,8 +337,8 @@ export function addRenderMixinTests({
 
   describe('check errors on draw', () => {
 
-    it('works', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources();
+    itWithDevice('works', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -371,8 +349,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if pass ended', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if pass ended', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -383,8 +361,8 @@ export function addRenderMixinTests({
       });
     });
 
-    it('fails if no pipeline', async () => {
-      const { device, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if no pipeline', async (device) => {
+      const { vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setVertexBuffer(0, vertexBuffer0);
       pass.setVertexBuffer(1, vertexBuffer1);
@@ -394,8 +372,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if missing vertexBuffer', async () => {
-      const { pipeline, device, vertexBuffer0 } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if missing vertexBuffer', async (device) => {
+      const { pipeline, vertexBuffer0 } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -405,8 +383,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if vertexBuffer destroyed', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if vertexBuffer destroyed', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -418,8 +396,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if vertexCount exceeds data', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if vertexCount exceeds data', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -431,8 +409,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if count exceeds data via binding size', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if count exceeds data via binding size', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0, 0, 20);
@@ -443,8 +421,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if count exceeds data via binding offset', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if count exceeds data via binding offset', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0, 4);
@@ -456,8 +434,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if instanceCount exceeds data', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if instanceCount exceeds data', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -486,8 +464,8 @@ export function addRenderMixinTests({
 
   describe('check errors on drawIndexed', () => {
 
-    it('works', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('works', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -499,8 +477,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if pass ended', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if pass ended', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -512,8 +490,8 @@ export function addRenderMixinTests({
       });
     });
 
-    it('fails if no pipeline', async () => {
-      const { device, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if no pipeline', async (device) => {
+      const { vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setVertexBuffer(0, vertexBuffer0);
       pass.setVertexBuffer(1, vertexBuffer1);
@@ -524,8 +502,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if missing vertexBuffer', async () => {
-      const { pipeline, device, vertexBuffer0, indexBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if missing vertexBuffer', async (device) => {
+      const { pipeline, vertexBuffer0, indexBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -536,8 +514,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if vertexBuffer destroyed', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if vertexBuffer destroyed', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -550,8 +528,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if missing indexBuffer', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if missing indexBuffer', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1 } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -562,8 +540,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if indexBuffer destroyed', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if indexBuffer destroyed', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -576,8 +554,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if indexedCount > data', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if indexedCount > data', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -589,8 +567,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if indexedCount > data via size', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if indexedCount > data via size', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -602,8 +580,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if indexedCount > data via offset', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if indexedCount > data via offset', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -615,8 +593,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if instanceCount > data', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if instanceCount > data', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -646,8 +624,8 @@ export function addRenderMixinTests({
 
   describe('check errors on drawIndirect', () => {
 
-    it('works', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('works', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -658,8 +636,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if pass ended', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if pass ended', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -670,8 +648,8 @@ export function addRenderMixinTests({
       });
     });
 
-    it('fails if no pipeline', async () => {
-      const { device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if no pipeline', async (device) => {
+      const { vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setVertexBuffer(0, vertexBuffer0);
       pass.setVertexBuffer(1, vertexBuffer1);
@@ -681,8 +659,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if missing vertexBuffer', async () => {
-      const { pipeline, device, vertexBuffer0, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if missing vertexBuffer', async (device) => {
+      const { pipeline, vertexBuffer0, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -692,8 +670,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if vertexBuffer destroyed', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if vertexBuffer destroyed', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -705,8 +683,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if indirectBuffer destroyed', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if indirectBuffer destroyed', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -718,8 +696,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if indirect offset outside data', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if indirect offset outside data', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -751,8 +729,8 @@ export function addRenderMixinTests({
 
   describe('check errors on drawIndexedIndirect', () => {
 
-    it('works', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('works', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -764,8 +742,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if pass ended', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if pass ended', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -777,8 +755,8 @@ export function addRenderMixinTests({
       });
     });
 
-    it('fails if no pipeline', async () => {
-      const { device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if no pipeline', async (device) => {
+      const { vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setVertexBuffer(0, vertexBuffer0);
       pass.setVertexBuffer(1, vertexBuffer1);
@@ -789,8 +767,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if missing vertexBuffer', async () => {
-      const { pipeline, device, vertexBuffer0, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if missing vertexBuffer', async (device) => {
+      const { pipeline, vertexBuffer0, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -801,8 +779,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if vertexBuffer destroyed', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if vertexBuffer destroyed', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -815,8 +793,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if missing indexBuffer', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if missing indexBuffer', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -827,8 +805,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if indexBuffer destroyed', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if indexBuffer destroyed', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -841,8 +819,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if indirectBuffer destroyed', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if indirectBuffer destroyed', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);
@@ -855,8 +833,8 @@ export function addRenderMixinTests({
       endPass(pass);
     });
 
-    it('fails if indirect offset outside data', async () => {
-      const { pipeline, device, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources();
+    itWithDevice('fails if indirect offset outside data', async (device) => {
+      const { pipeline, vertexBuffer0, vertexBuffer1, indexBuffer, indirectBuffer } = await createRenderPipelineAndAttribResources(device);
       const pass = await makePass(device);
       pass.setPipeline(pipeline);
       pass.setVertexBuffer(0, vertexBuffer0);

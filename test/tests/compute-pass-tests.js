@@ -1,5 +1,5 @@
-import {describe, it} from '../mocha-support.js';
-import {expectValidationError} from '../js/utils.js';
+import {describe} from '../mocha-support.js';
+import {expectValidationError, itWithDevice} from '../js/utils.js';
 import {addValidateBindGroupTests} from './binding-mixin-tests.js';
 import {addTimestampWriteTests} from './timestamp-tests.js';
 
@@ -56,8 +56,7 @@ describe('test compute pass encoder', () => {
 
  describe('check errors on beginComputePass', () => {
 
-    it('errors if 2 passes are started', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('errors if 2 passes are started', async (device) => {
       const encoder = await createCommandEncoder(device);
       await createComputePass(device, encoder);
       await expectValidationError(true, async () => {
@@ -65,8 +64,8 @@ describe('test compute pass encoder', () => {
       });
     });
 
-    it('can not end twice', async () => {
-      const pass = await createComputePass();
+     itWithDevice('can not end twice', async (device) => {
+      const pass = await createComputePass(device);
       pass.end();
       await expectValidationError(true, async () => {
         pass.end();
@@ -83,16 +82,15 @@ describe('test compute pass encoder', () => {
 
   describe('check errors on setPipeline', () => {
 
-    it('pipeline from different device', async () => {
-      const pipeline = await createComputePipeline();
+     itWithDevice('pipeline from different device', async (device) => {
+      const pipeline = await createComputePipeline(device);
       const pass = await createComputePass();
       await expectValidationError(true, () => {
         pass.setPipeline(pipeline);
       });
     });
 
-    it('fails if ended', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if ended', async (device) => {
       const pipeline = await createComputePipeline(device);
       const pass = await createComputePass(device);
       pass.end();
@@ -112,8 +110,7 @@ describe('test compute pass encoder', () => {
       { expectError: true, args: [1, 1, 100000000] , desc: 'z too big' },
     ];
     for (const {expectError, args, desc} of tests) {
-      it(desc, async () => {
-        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      itWithDevice(desc, async (device) => {
         const pipeline = await createComputePipeline(device);
         const pass = await createComputePass(device);
         pass.setPipeline(pipeline);
@@ -141,8 +138,7 @@ describe('test compute pass encoder', () => {
 
   describe('dispatchWorkgroupsIndirect', () => {
 
-    it('works', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('works', async (device) => {
       const pipeline = await createComputePipeline(device);
       const indirectBuffer = device.createBuffer({size: 12, usage: GPUBufferUsage.INDIRECT});
       const pass = await createComputePass(device);
@@ -152,8 +148,7 @@ describe('test compute pass encoder', () => {
       });
     });
 
-    it('fails if indirectBuffer destroyed', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if indirectBuffer destroyed', async (device) => {
       const pipeline = await createComputePipeline(device);
       const indirectBuffer = device.createBuffer({size: 12, usage: GPUBufferUsage.INDIRECT});
       const pass = await createComputePass(device);
@@ -164,8 +159,7 @@ describe('test compute pass encoder', () => {
       });
     });
 
-    it('fails if indirect offset outside data', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if indirect offset outside data', async (device) => {
       const pipeline = await createComputePipeline(device);
       const indirectBuffer = device.createBuffer({size: 12, usage: GPUBufferUsage.INDIRECT});
       const pass = await createComputePass(device);
@@ -175,8 +169,7 @@ describe('test compute pass encoder', () => {
       });
     });
 
-    it('fails if indirect size too small', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if indirect size too small', async (device) => {
       const pipeline = await createComputePipeline(device);
       const indirectBuffer = device.createBuffer({size: 8, usage: GPUBufferUsage.INDIRECT});
       const pass = await createComputePass(device);

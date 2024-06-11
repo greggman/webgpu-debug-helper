@@ -1,20 +1,17 @@
-import {describe, it} from '../mocha-support.js';
+import {describe} from '../mocha-support.js';
+import { itWithDevice } from '../js/utils.js';
 import { assertFalsy, assertInstanceOf } from '../assert.js';
 
 describe('test push/pop error scope', () => {
 
-  it('test we get error (because they are being captured)', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-
+   itWithDevice('test we get error (because they are being captured)', async (device) => {
     device.pushErrorScope('validation');
       device.createSampler({maxAnisotropy: 0});
     const err = await device.popErrorScope();
     assertInstanceOf(err, GPUValidationError);
   });
 
-  it('test we get errors nested', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-
+   itWithDevice('test we get errors nested', async (device) => {
     device.pushErrorScope('validation');
       device.pushErrorScope('validation');
         device.createSampler({maxAnisotropy: 0});
@@ -31,9 +28,7 @@ describe('test push/pop error scope', () => {
     assertFalsy(rootErr);
   });
 
-  it('test we get errors nested - more', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-
+   itWithDevice('test we get errors nested - more', async (device) => {
     device.pushErrorScope('validation');
       device.pushErrorScope('validation');
         device.pushErrorScope('validation');
@@ -52,9 +47,7 @@ describe('test push/pop error scope', () => {
     assertInstanceOf(rootErr, GPUValidationError);
   });
 
-  it('test we get uncaught errors', async () => {
-    const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-
+   itWithDevice('test we get uncaught errors', async (device) => {
     const promise = new Promise(resolve => {
       device.addEventListener('uncapturederror', (e) => {
         resolve(e.error);

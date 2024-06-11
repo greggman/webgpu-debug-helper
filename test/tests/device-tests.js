@@ -1,6 +1,6 @@
 
-import {describe, it} from '../mocha-support.js';
-import {expectValidationError} from '../js/utils.js';
+import {describe} from '../mocha-support.js';
+import {expectValidationError, itWithDevice} from '../js/utils.js';
 
 async function createBindGroupLayout(device) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
@@ -32,9 +32,7 @@ describe('test device', () => {
 
   describe('test createBindGroup', () =>  {
 
-    it('fails if resource buffer is destroyed', async () => {
-
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if resource buffer is destroyed', async (device) => {
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
       buffer.destroy();
       await expectValidationError(true, async () => {
@@ -44,7 +42,7 @@ describe('test device', () => {
     });
 
     /* TODO: finish buffer tests
-    it('fails if size > buffer.size', async () => {
+     itWithDevice('fails if size > buffer.size', async (device) => {
 
       const device = await (await navigator.gpu.requestAdapter()).requestDevice();
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
@@ -61,7 +59,7 @@ describe('test device', () => {
 
     });
 
-    it('fails if offset + size > buffer.size', async () => {
+     itWithDevice('fails if offset + size > buffer.size', async (device) => {
 
       const device = await (await navigator.gpu.requestAdapter()).requestDevice();
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});

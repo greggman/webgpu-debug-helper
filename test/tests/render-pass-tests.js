@@ -1,5 +1,5 @@
 import {describe, it} from '../mocha-support.js';
-import {expectValidationError} from '../js/utils.js';
+import {expectValidationError, itWithDevice} from '../js/utils.js';
 import {addRenderMixinTests} from './render-mixin-tests.js';
 import {addTimestampWriteTests, getDeviceWithTimestamp} from './timestamp-tests.js';
 
@@ -39,8 +39,7 @@ describe('test render pass encoder', () => {
 
   describe('check errors on beginRenderPass', () => {
 
-    it('errors if 2 passes are started', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+    itWithDevice('errors if 2 passes are started', async (device) => {
       const encoder = await createCommandEncoder(device);
       await createRenderPass(device, encoder);
       await expectValidationError(true, async () => {
@@ -48,17 +47,15 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('can not end twice', async () => {
-      const pass = await createRenderPass();
+    itWithDevice('can not end twice', async (device) => {
+      const pass = await createRenderPass(device);
       pass.end();
       await expectValidationError(true, async () => {
         pass.end();
       });
     });
 
-    it('errors when colorAttachments are not the same size', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+    itWithDevice('errors when colorAttachments are not the same size', async (device) => {
       const textures = [2, 3].map(width => device.createTexture({
         size: [width, 3],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -77,9 +74,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('errors when colorAttachments are not the same sampleCount', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+    itWithDevice('errors when colorAttachments are not the same sampleCount', async (device) => {
       const textures = [1, 4].map(sampleCount => device.createTexture({
         size: [3, 3],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -99,9 +94,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('works with resolveTarget', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+    itWithDevice('works with resolveTarget', async (device) => {
       const textures = [4, 1].map(sampleCount => device.createTexture({
         size: [3, 3],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -124,9 +117,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('errors when resolveTarget is not sampleCount 1', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+    itWithDevice('errors when resolveTarget is not sampleCount 1', async (device) => {
       const textures = [4, 4].map(sampleCount => device.createTexture({
         size: [3, 3],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -149,9 +140,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('errors when resolveTarget is not same size', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+     itWithDevice('errors when resolveTarget is not same size', async (device) => {
       const textures = [4, 1].map((sampleCount, i) => device.createTexture({
         size: [3, 3 + i],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -174,9 +163,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('errors when resolveTarget is not same format', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+     itWithDevice('errors when resolveTarget is not same format', async (device) => {
       const textures = [4, 1].map((sampleCount, i) => device.createTexture({
         size: [3, 3],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -198,9 +185,8 @@ describe('test render pass encoder', () => {
         });
       });
     });
-    it('errors when no attachments', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+
+     itWithDevice('errors when no attachments', async (device) => {
       const encoder = device.createCommandEncoder();
       await expectValidationError(true, () => {
         encoder.beginRenderPass({
@@ -209,9 +195,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('no error when max bytes per sample', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+     itWithDevice('no error when max bytes per sample', async (device) => {
       const textures = [1, 1, 1, 1].map(() => device.createTexture({
         size: [3, 3],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -230,9 +214,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('error when > max bytes per sample', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+     itWithDevice('error when > max bytes per sample', async (device) => {
       const textures = new Array(Math.ceil(device.limits.maxColorAttachmentBytesPerSample / 16) + 1).fill(1).map(() => device.createTexture({
         size: [3, 3],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -251,9 +233,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('error when > max attachments', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+     itWithDevice('error when > max attachments', async (device) => {
       const textures = new Array(device.limits.maxColorAttachments + 1).fill(1).map(() => device.createTexture({
         size: [3, 3],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -272,9 +252,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('errors when depthStencilAttachment is a different size than the colorAttachments', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+    itWithDevice('errors when depthStencilAttachment is a different size than the colorAttachments', async (device) => {
       const colorTexture = device.createTexture({
         size: [2, 2],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -306,9 +284,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('fails when the sample layer/level is used more than once', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+     itWithDevice('fails when the sample layer/level is used more than once', async (device) => {
       const colorTexture = device.createTexture({
         size: [2, 2],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -335,9 +311,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('passes when the sample different layers on the same texture', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+     itWithDevice('passes when the sample different layers on the same texture', async (device) => {
       const colorTexture = device.createTexture({
         size: [2, 2, 2],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -364,9 +338,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('errors when colorAttachments are destroyed', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+     itWithDevice('errors when colorAttachments are destroyed', async (device) => {
       const textures = [3, 3].map(width => device.createTexture({
         size: [width, 3],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -384,12 +356,9 @@ describe('test render pass encoder', () => {
           })),
         });
       });
-
     });
 
-    it('errors when depthStencilAttachment is destroyed', async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      const device = await adapter.requestDevice();
+     itWithDevice('errors when depthStencilAttachment is destroyed', async (device) => {
       const colorTexture = device.createTexture({
         size: [2, 2],
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -444,6 +413,7 @@ describe('test render pass encoder', () => {
           occlusionQuerySet,
         });
       });
+      device.destroy();
     });
 
     addTimestampWriteTests({
@@ -465,8 +435,7 @@ describe('test render pass encoder', () => {
 
   describe('check errors on executeBundles', () => {
 
-    it('works', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('works', async (device) => {
       const pass = await createRenderPass(device);
       const bundleEncoder = device.createRenderBundleEncoder({
         colorFormats: ['rgba8unorm'],
@@ -479,8 +448,7 @@ describe('test render pass encoder', () => {
 
     });
 
-    it('fails if bundle is from different device', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if bundle is from different device', async (device) => {
       const pass = await createRenderPass();
       const bundleEncoder = device.createRenderBundleEncoder({
         colorFormats: ['rgba8unorm'],
@@ -493,8 +461,7 @@ describe('test render pass encoder', () => {
 
     });
 
-    it('fails if bundle incompatible', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if bundle incompatible', async (device) => {
       const pass = await createRenderPass(device);
       const bundleEncoder = device.createRenderBundleEncoder({
         colorFormats: ['r8unorm'],
@@ -511,8 +478,7 @@ describe('test render pass encoder', () => {
 
   describe('beginOcclusionQuery', () => {
 
-    it('works', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('works', async (device) => {
       const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
       const pass = await createRenderPass(device, undefined, {
         occlusionQuerySet,
@@ -523,16 +489,14 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('fails if no occlusionQuerySet on pass', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if no occlusionQuerySet on pass', async (device) => {
       const pass = await createRenderPass(device);
       await expectValidationError(true, () => {
         pass.beginOcclusionQuery(0);
       });
     });
 
-    it('fails if querySet destroyed', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if querySet destroyed', async (device) => {
       const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
       const pass = await createRenderPass(device, undefined, {
         occlusionQuerySet,
@@ -544,8 +508,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('fails if queryIndex out of range', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if queryIndex out of range', async (device) => {
       const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
       const pass = await createRenderPass(device, undefined, {
         occlusionQuerySet,
@@ -556,8 +519,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('fails if query in progress', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if query in progress', async (device) => {
       const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
       const pass = await createRenderPass(device, undefined, {
         occlusionQuerySet,
@@ -569,8 +531,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('fails if queryIndex already used', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if queryIndex already used', async (device) => {
       const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
       const pass = await createRenderPass(device, undefined, {
         occlusionQuerySet,
@@ -587,8 +548,7 @@ describe('test render pass encoder', () => {
 
   describe('endOcclusionQuery', () => {
 
-    it('works', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('works', async (device) => {
       const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
       const pass = await createRenderPass(device, undefined, {
         occlusionQuerySet,
@@ -600,8 +560,7 @@ describe('test render pass encoder', () => {
       });
     });
 
-    it('fails if querySet destroyed', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if querySet destroyed', async (device) => {
       const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
       const pass = await createRenderPass(device, undefined, {
         occlusionQuerySet,
@@ -615,8 +574,7 @@ describe('test render pass encoder', () => {
     });
 
 
-    it('fails if no query in progress', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if no query in progress', async (device) => {
       const occlusionQuerySet = device.createQuerySet({ type: 'occlusion', count: 2 });
       const pass = await createRenderPass(device, undefined, {
         occlusionQuerySet,
@@ -648,8 +606,8 @@ describe('test render pass encoder', () => {
     ];
 
     for (const {success, args, desc, end} of tests) {
-      it(desc, async () => {
-        const pass = await createRenderPass();
+      itWithDevice(desc, async (device) => {
+        const pass = await createRenderPass(device);
         if (end) {
           pass.end();
         }
@@ -675,8 +633,8 @@ describe('test render pass encoder', () => {
     ];
 
     for (const {success, args, desc, end} of tests) {
-      it(desc, async () => {
-        const pass = await createRenderPass();
+      itWithDevice(desc, async (device) => {
+        const pass = await createRenderPass(device);
         if (end) {
           pass.end();
         }

@@ -1,12 +1,11 @@
-import {describe, it} from '../../mocha-support.js';
-import {expectValidationError } from '../../js/utils.js';
-import {createCommandEncoder, createDeviceWith4x4Format16BytesPerPixel} from './copy-utils.js';
+import {describe} from '../../mocha-support.js';
+import {expectValidationError, itWithDevice} from '../../js/utils.js';
+import {createCommandEncoder, createDeviceWith4x4Format16BytesPerPixel, itWithDevice4x4Format16BytesPerPixel} from './copy-utils.js';
 
 export default function () {
   describe('test copyTextureToTexture', () => {
 
-    it('works', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('works', async (device) => {
       const encoder = await createCommandEncoder(device);
       const src = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_SRC });
       const dst = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_DST });
@@ -19,8 +18,7 @@ export default function () {
       });
     });
 
-    it('fails if encoder is locked', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if encoder is locked', async (device) => {
       const encoder = await createCommandEncoder(device);
       encoder.beginComputePass();
       const src = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_SRC });
@@ -34,8 +32,7 @@ export default function () {
       });
     });
 
-    it('fails if encoder is finished', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if encoder is finished', async (device) => {
       const encoder = await createCommandEncoder(device);
       encoder.finish();
       const src = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_SRC });
@@ -49,8 +46,7 @@ export default function () {
       });
     });
 
-    it('fails if src sampleCount != dst sampleCount', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if src sampleCount != dst sampleCount', async (device) => {
       const encoder = await createCommandEncoder(device);
       const src = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_SRC });
       const dst = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT, sampleCount: 4 });
@@ -72,8 +68,7 @@ export default function () {
       ];
 
       for (const {fail, origin, desc} of overlapTests) {
-        it(desc, async () => {
-          const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+        itWithDevice(desc, async (device) => {
           const encoder = await createCommandEncoder(device);
           const texture = device.createTexture({ format: 'rgba8unorm', size: [4, 4, 4], usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST });
           await expectValidationError(fail, async () => {
@@ -104,8 +99,7 @@ export default function () {
     ['src', 'dst'].forEach((sd, i) => {
       describe(sd, () => {
         for (const {options, destroy, usage, otherDevice, desc} of sdTests) {
-          it(desc.replaceAll('$', sd), async () => {
-            const { device, format } = await createDeviceWith4x4Format16BytesPerPixel();
+          itWithDevice4x4Format16BytesPerPixel(desc.replaceAll('$', sd), async (device, format) => {
             const encoder = await createCommandEncoder(device);
             const usages = [GPUTextureUsage.COPY_SRC, GPUTextureUsage.COPY_DST];
             if (usage) {

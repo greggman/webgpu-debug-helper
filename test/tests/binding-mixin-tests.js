@@ -1,5 +1,5 @@
-import {describe, it} from '../mocha-support.js';
-import {expectValidationError} from '../js/utils.js';
+import {describe} from '../mocha-support.js';
+import {expectValidationError, itWithDevice} from '../js/utils.js';
 
 async function createBindGroup(device, buffer) {
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
@@ -65,8 +65,7 @@ export function addBindingMixinTests({
 
   describe('check errors on setBindGroup', () => {
 
-    it('works', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('works', async (device) => {
       const pass = await makePass(device);
       const bindGroup = await createBindGroup(device);
       await expectValidationError(false, () => {
@@ -74,8 +73,7 @@ export function addBindingMixinTests({
       });
     });
 
-    it('fails if ended', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if ended', async (device) => {
       const pass = await makePass(device);
       const bindGroup = await createBindGroup(device);
       endPass(pass);
@@ -84,16 +82,15 @@ export function addBindingMixinTests({
       });
     });
 
-    it('bindGroup from different device', async () => {
-      const pass = await makePass();
+     itWithDevice('bindGroup from different device', async (device) => {
+      const pass = await makePass(device);
       const bindGroup = await createBindGroup();
       await expectValidationError(true, () => {
         pass.setBindGroup(0, bindGroup);
       });
     });
 
-    it('index < 0', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('index < 0', async (device) => {
       const pass = await makePass(device);
       const bindGroup = await createBindGroup(device);
       await expectValidationError(true, () => {
@@ -101,8 +98,7 @@ export function addBindingMixinTests({
       });
     });
 
-    it('index > max', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('index > max', async (device) => {
       const pass = await makePass(device);
       const bindGroup = await createBindGroup(device);
       await expectValidationError(true, () => {
@@ -110,8 +106,7 @@ export function addBindingMixinTests({
       });
     });
 
-    it('fails if buffer destroyed', async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+     itWithDevice('fails if buffer destroyed', async (device) => {
       const pass = await makePass(device);
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
       const bindGroup = await createBindGroup(device, buffer);
@@ -122,45 +117,40 @@ export function addBindingMixinTests({
     });
 
     const addDynamicOffsetTests = (fn) => {
-      it('works', async () => {
-        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-        const pass = await makePass(device);
+       itWithDevice('works', async (device) => {
+          const pass = await makePass(device);
         const bindGroup = await createBindGroupWithDynamicOffsets(device);
         await expectValidationError(false, () => {
           pass.setBindGroup(0, bindGroup, ...fn([2048 - 1024, 1024 - 512]));
         });
       });
 
-      it('fails if wrong number of dynamic offsets', async () => {
-        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-        const pass = await makePass(device);
+       itWithDevice('fails if wrong number of dynamic offsets', async (device) => {
+          const pass = await makePass(device);
         const bindGroup = await createBindGroupWithDynamicOffsets(device);
         await expectValidationError('same number of dynamicOffsets', () => {
           pass.setBindGroup(0, bindGroup, ...fn([0, 0, 0]));
         });
       });
 
-      it('fails if dynamic offset out of range', async () => {
-        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-        const pass = await makePass(device);
+       itWithDevice('fails if dynamic offset out of range', async (device) => {
+          const pass = await makePass(device);
         const bindGroup = await createBindGroupWithDynamicOffsets(device);
         await expectValidationError('dynamic offset is out of range', () => {
           pass.setBindGroup(0, bindGroup, ...fn([2048, 0]));
         });
       });
 
-      it('fails if dynamic offset is not storage aligned', async () => {
-        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-        const pass = await makePass(device);
+       itWithDevice('fails if dynamic offset is not storage aligned', async (device) => {
+          const pass = await makePass(device);
         const bindGroup = await createBindGroupWithDynamicOffsets(device);
         await expectValidationError('device.limits.minStorageBufferOffsetAlignment', () => {
           pass.setBindGroup(0, bindGroup, ...fn([128, 0]));
         });
       });
 
-      it('fails if dynamic offset is not uniform aligned', async () => {
-        const device = await (await navigator.gpu.requestAdapter()).requestDevice();
-        const pass = await makePass(device);
+       itWithDevice('fails if dynamic offset is not uniform aligned', async (device) => {
+          const pass = await makePass(device);
         const bindGroup = await createBindGroupWithDynamicOffsets(device);
         await expectValidationError('device.limits.minUniformBufferOffsetAlignment', () => {
           pass.setBindGroup(0, bindGroup, ...fn([0, 128]));
@@ -332,8 +322,8 @@ export function addValidateBindGroupTests({
 
     describe('auto layout', () => {
 
-      it('works with auto layout', async () => {
-        const { pass, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline);
+       itWithDevice('works with auto layout', async (device) => {
+        const { pass, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         pass.setBindGroup(0, bindGroup0);
         pass.setBindGroup(1, bindGroup1);
         pass.setBindGroup(2, bindGroup2);
@@ -343,8 +333,8 @@ export function addValidateBindGroupTests({
         });
       });
 
-      it('fails if missing bindGroup', async () => {
-        const { pass, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline);
+       itWithDevice('fails if missing bindGroup', async (device) => {
+        const { pass, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         pass.setBindGroup(1, bindGroup1);
         pass.setBindGroup(2, bindGroup2);
 
@@ -353,8 +343,8 @@ export function addValidateBindGroupTests({
         });
       });
 
-      it('fails if resource is destroyed', async () => {
-        const { pass, u01Buffer, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline);
+       itWithDevice('fails if resource is destroyed', async (device) => {
+        const { pass, u01Buffer, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         pass.setBindGroup(0, bindGroup0);
         pass.setBindGroup(1, bindGroup1);
         pass.setBindGroup(2, bindGroup2);
@@ -365,8 +355,8 @@ export function addValidateBindGroupTests({
         });
       });
 
-      it('fails if layout is incompatible (auto layout)', async () => {
-        const { device, pass, bindGroup0, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline);
+       itWithDevice('fails if layout is incompatible (auto layout)', async (device) => {
+        const { pass, bindGroup0, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         const { bindGroup1 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         pass.setBindGroup(0, bindGroup0);
         pass.setBindGroup(1, bindGroup1);
@@ -377,8 +367,8 @@ export function addValidateBindGroupTests({
         });
       });
 
-      it('works if layout is compatible (auto layout)', async () => {
-        const { pass, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline);
+       itWithDevice('works if layout is compatible (auto layout)', async (device) => {
+        const { pass, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         pass.setBindGroup(0, bindGroup0);
         pass.setBindGroup(1, bindGroup2);  // 2 and 1 are swapped but
         pass.setBindGroup(2, bindGroup1);  // they should be compatible
@@ -388,8 +378,8 @@ export function addValidateBindGroupTests({
         });
       });
 
-      it('false if layout is incompatible (auto layout + manual bindGroupLayout)', async () => {
-        const { device, pass, bindGroup0, bindGroup1, u20Buffer } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline);
+       itWithDevice('false if layout is incompatible (auto layout + manual bindGroupLayout)', async (device) => {
+        const { pass, bindGroup0, bindGroup1, u20Buffer } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         const bindGroupLayout = device.createBindGroupLayout({
           entries: [
             {
@@ -418,8 +408,8 @@ export function addValidateBindGroupTests({
 
     describe('explicit layout', () => {
 
-      it('works with explicit layout', async () => {
-        const { pass, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, visibility });
+       itWithDevice('works with explicit layout', async (device) => {
+        const { pass, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, visibility, device });
         pass.setBindGroup(0, bindGroup0);
         pass.setBindGroup(1, bindGroup1);
         pass.setBindGroup(2, bindGroup2);
@@ -429,8 +419,8 @@ export function addValidateBindGroupTests({
         });
       });
 
-      it('works with different explicit layout if they are compatible', async () => {
-        const { device, pass, bindGroup0, bindGroup1 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, visibility });
+       itWithDevice('works with different explicit layout if they are compatible', async (device) => {
+        const { pass, bindGroup0, bindGroup1 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, visibility, device });
         const { bindGroup2 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, device, visibility });
         pass.setBindGroup(0, bindGroup0);
         pass.setBindGroup(1, bindGroup1);
@@ -441,8 +431,8 @@ export function addValidateBindGroupTests({
         });
       });
 
-      it('fails with incompatible bindGroup', async () => {
-        const { pass, bindGroup1, bindGroup2 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, visibility });
+       itWithDevice('fails with incompatible bindGroup', async (device) => {
+        const { pass, bindGroup1, bindGroup2 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, visibility, device });
         pass.setBindGroup(0, bindGroup1); // incompatible
         pass.setBindGroup(1, bindGroup1);
         pass.setBindGroup(2, bindGroup2);
