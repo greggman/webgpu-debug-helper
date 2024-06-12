@@ -68,6 +68,31 @@ if (debug) {
 }
 ```
 
+## Development
+
+Clone the repo and install it locally.
+
+```bash
+npm ci
+npm run start
+```
+
+Now open the browser to `http://localhost:8080/test/timeout=0&src=true`
+
+### Testing with three.js
+
+If you have the [three.js repo](https://github.com/mrdoob/three.js)
+install along side in a folder named `three.js` as in
+
+```
++-somefolder
+  +-webgpu-dev-extension
+  +-three.js
+```
+
+Then `npm run test-threejs` will attempt to each of the three.js webgpu
+examples and inject the helper. Ideally there should be no errors.
+
 ## License
 
 [MIT](LICENSE.md)

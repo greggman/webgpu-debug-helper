@@ -6,3 +6,5 @@ import './compute-pass-encoder.js';
 import './render-pass-encoder.js';
 import './render-bundle-encoder.js';
 import './texture.js';
+
+console.log('webgpu-debug-helper running');

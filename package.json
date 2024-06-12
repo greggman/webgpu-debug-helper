@@ -17,7 +17,8 @@
     "pre-push": "npm run lint && npm run build && npm run test",
     "watch": "rollup -c -w",
     "start": "node build/tools/serve.js",
-    "test": "node test/puppeteer.js"
+    "test": "node test/puppeteer.js",
+    "test-threejs": "node test/puppeteer.js --threejs"
   },
   "repository": {
     "type": "git",
