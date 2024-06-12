@@ -41,9 +41,55 @@ export type FormatInfo = {
   feature?: string,
 };
 
+
+
 // exported from the WebGPU CTS by adding the following line to src/webgpu/format_info.ts
 //
 //    console.log(JSON.stringify(kAllTextureFormatInfo, null, 2));
+
+/** `kDepthStencilFormatResolvedAspect[format][aspect]` returns the aspect-specific format for a
+ *  depth-stencil format, or `undefined` if the format doesn't have the aspect.
+ */
+const kDepthStencilFormatResolvedAspect = {
+  // kUnsizedDepthStencilFormats
+  depth24plus: {
+    all: 'depth24plus',
+    'depth-only': 'depth24plus',
+    'stencil-only': undefined,
+  },
+  'depth24plus-stencil8': {
+    all: 'depth24plus-stencil8',
+    'depth-only': 'depth24plus',
+    'stencil-only': 'stencil8',
+  },
+
+  // kSizedDepthStencilFormats
+  depth16unorm: {
+    all: 'depth16unorm',
+    'depth-only': 'depth16unorm',
+    'stencil-only': undefined,
+  },
+  depth32float: {
+    all: 'depth32float',
+    'depth-only': 'depth32float',
+    'stencil-only': undefined,
+  },
+  'depth32float-stencil8': {
+    all: 'depth32float-stencil8',
+    'depth-only': 'depth32float',
+    'stencil-only': 'stencil8',
+  },
+  stencil8: {
+    all: 'stencil8',
+    'depth-only': undefined,
+    'stencil-only': 'stencil8',
+  },
+};
+
+export function getDepthStencilFormatResolvedAspect(format: GPUTextureFormat, aspect: GPUTextureAspect): GPUTextureFormat | undefined {
+  const info = kDepthStencilFormatResolvedAspect[format as keyof typeof kDepthStencilFormatResolvedAspect];
+  return info ? info[aspect] as GPUTextureFormat : undefined;
+}
 
 export const kAllTextureFormatInfo: {[key: string]: FormatInfo} =  {
   "r8unorm": {
