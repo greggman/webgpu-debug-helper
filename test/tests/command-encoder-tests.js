@@ -76,6 +76,7 @@ describe('test command encoder', () => {
       await expectValidationError(true, async () => {
         encoder.clearBuffer(buffer);
       });
+      device2.destroy();
     });
 
      itWithDevice('fails if buffer.usage missing COPY_DST', async (device) => {
@@ -107,6 +108,135 @@ describe('test command encoder', () => {
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.COPY_DST});
       await expectValidationError(true, async () => {
         encoder.clearBuffer(buffer, 12, 8);
+      });
+    });
+
+  });
+
+  describe('test resolveQuerySet', () => {
+
+    itWithDevice('works', async (device) => {
+      const querySet = device.createQuerySet({count: 2, type: 'occlusion'});
+      const encoder = await createCommandEncoder(device);
+      const resolveBuffer = device.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.QUERY_RESOLVE,
+      });
+      encoder.resolveQuerySet(querySet, 0, 2, resolveBuffer, 0);
+      encoder.finish();
+    });
+
+    itWithDevice('fails if querySet destroyed', async (device) => {
+      const querySet = device.createQuerySet({count: 2, type: 'occlusion'});
+      const encoder = await createCommandEncoder(device);
+      const resolveBuffer = device.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.QUERY_RESOLVE,
+      });
+      querySet.destroy();
+      await expectValidationError(true, async () => {
+        encoder.resolveQuerySet(querySet, 0, 2, resolveBuffer, 0);
+      });
+    });
+
+    itWithDevice('fails if resolve buffer destroyed', async (device) => {
+      const querySet = device.createQuerySet({count: 2, type: 'occlusion'});
+      const encoder = await createCommandEncoder(device);
+      const resolveBuffer = device.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.QUERY_RESOLVE,
+      });
+      resolveBuffer.destroy();
+      await expectValidationError(true, async () => {
+        encoder.resolveQuerySet(querySet, 0, 2, resolveBuffer, 0);
+      });
+    });
+
+    itWithDevice('fails if querySet not from same device', async (device) => {
+      const device2 = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const querySet = device2.createQuerySet({count: 2, type: 'occlusion'});
+      const encoder = await createCommandEncoder(device);
+      const resolveBuffer = device.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.QUERY_RESOLVE,
+      });
+      await expectValidationError(true, async () => {
+        encoder.resolveQuerySet(querySet, 0, 2, resolveBuffer, 0);
+      });
+      device2.destroy();
+    });
+
+    itWithDevice('fails if resolveBuffer not from same device', async (device) => {
+      const device2 = await (await navigator.gpu.requestAdapter()).requestDevice();
+      const querySet = device.createQuerySet({count: 2, type: 'occlusion'});
+      const encoder = await createCommandEncoder(device);
+      const resolveBuffer = device2.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.QUERY_RESOLVE,
+      });
+      await expectValidationError(true, async () => {
+        encoder.resolveQuerySet(querySet, 0, 2, resolveBuffer, 0);
+      });
+      device2.destroy();
+    });
+
+    itWithDevice('fails if resolveBuffer missing usage QUERY_RESOLVE', async (device) => {
+      const querySet = device.createQuerySet({count: 2, type: 'occlusion'});
+      const encoder = await createCommandEncoder(device);
+      const resolveBuffer = device.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.UNIFORM,
+      });
+      await expectValidationError(true, async () => {
+        encoder.resolveQuerySet(querySet, 0, 2, resolveBuffer, 0);
+      });
+    });
+
+    itWithDevice('fails if start out of range', async (device) => {
+      const querySet = device.createQuerySet({count: 2, type: 'occlusion'});
+      const encoder = await createCommandEncoder(device);
+      const resolveBuffer = device.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.UNIFORM,
+      });
+      await expectValidationError(true, async () => {
+        encoder.resolveQuerySet(querySet, 3, 1, resolveBuffer, 0);
+      });
+    });
+
+    itWithDevice('fails if end out of range', async (device) => {
+      const querySet = device.createQuerySet({count: 2, type: 'occlusion'});
+      const encoder = await createCommandEncoder(device);
+      const resolveBuffer = device.createBuffer({
+        size: 16,
+        usage: GPUBufferUsage.UNIFORM,
+      });
+      await expectValidationError(true, async () => {
+        encoder.resolveQuerySet(querySet, 1, 2, resolveBuffer, 0);
+      });
+    });
+
+    itWithDevice('fails if resolveBuffer offset not multiple of 256', async (device) => {
+      const querySet = device.createQuerySet({count: 2, type: 'occlusion'});
+      const encoder = await createCommandEncoder(device);
+      const resolveBuffer = device.createBuffer({
+        size: 2048,
+        usage: GPUBufferUsage.UNIFORM,
+      });
+      await expectValidationError(true, async () => {
+        encoder.resolveQuerySet(querySet, 0, 2, resolveBuffer, 128);
+      });
+    });
+
+    itWithDevice('fails if resolveBuffer too small', async (device) => {
+      const querySet = device.createQuerySet({count: 2, type: 'occlusion'});
+      const encoder = await createCommandEncoder(device);
+      const resolveBuffer = device.createBuffer({
+        size: 8,
+        usage: GPUBufferUsage.UNIFORM,
+      });
+      await expectValidationError(true, async () => {
+        encoder.resolveQuerySet(querySet, 0, 2, resolveBuffer, 0);
       });
     });
 

@@ -19,7 +19,7 @@ export default [
         output: [
             {
                 file: `${dist}/${name}.js`,
-                format: 'esm',
+                format: 'umd',
                 sourcemap: true,
                 freeze: false,
                 banner,
