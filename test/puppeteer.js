@@ -19,6 +19,12 @@ function startServer(port, dir) {
   });
 }
 
+function getArgNumber(name) {
+  const s = process.argv.filter(a => a.startsWith(name))[0];
+  console.log(s);
+  return s ? parseInt(s.substring(name.length + 1)) : 0;
+}
+
 const { server, port } = await startServer(3000, path.dirname(__dirname));
 const servers = [server];
 
@@ -30,17 +36,25 @@ if (process.argv.includes('--threejs')) {
   const { server, port } = await startServer(3001, '../three.js');
   servers.push(server);
 
+  const skipCount = getArgNumber('--skip-count');
+
   const exampleInjectJS =
     fs.readFileSync('test/js/example-inject.js', {encoding: 'utf-8'}) +
     fs.readFileSync('dist/0.x/webgpu-debug-helper.js', {encoding: 'utf-8'});
 
+  const skip = [
+    // 'webgpu_instancing_morph.html',
+  ];
+
   tests.length = 0;
   tests.push(...fs.readdirSync(path.join(__dirname, '..', '..', 'three.js', 'examples'))
-    .filter(f => f.startsWith('webgpu_') && f.endsWith('.html'))
-    .map(f => ({
+    .filter(f => f.startsWith('webgpu_') && f.endsWith('.html') && !skip.includes(f))
+    .map((f, id) => ({
       url: `http://localhost:${port}/examples/${f}`,
       js: exampleInjectJS,
+      id: id + 1,
     })));
+  tests.splice(0, skipCount);
 }
 
 test(tests);
@@ -78,9 +92,9 @@ async function test(tests) {
     waitingPromiseInfo.resolve();
   });
 
-  for (const {url, js} of tests) {
+  for (const {url, js, id} of tests) {
     waitingPromiseInfo = makePromiseInfo();
-    console.log(`===== [ ${url} ] =====`);
+    console.log(`===== [ ${id ? `#${id}:` : ''} ${url} ] =====`);
     let newScriptEval;
     if (js) {
       newScriptEval = await page.evaluateOnNewDocument(js);

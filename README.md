@@ -93,6 +93,8 @@ install along side in a folder named `three.js` as in
 Then `npm run test-threejs` will attempt to each of the three.js webgpu
 examples and inject the helper. Ideally there should be no errors.
 
+You can skip the first N tests with `-- --skip-count=<number>` (the first `--` is required).
+
 ## License
 
 [MIT](LICENSE.md)

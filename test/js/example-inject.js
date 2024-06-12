@@ -31,10 +31,4 @@ window.addEventListener('error', (event) => {
       return device;
     };
   })(GPUAdapter.prototype.requestDevice);
-
-  window.requestAnimationFrame = function (fn) {
-    setTimeout(() => {
-      fn(performance.now());
-    }, 20);
-  };
 }
