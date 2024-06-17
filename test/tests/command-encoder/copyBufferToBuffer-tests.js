@@ -93,7 +93,7 @@ export default function () {
     ];
     for (const {srcOffset = 0, dstOffset = 0, size = 16, desc} of tests) {
       itWithDevice(desc, async (device) => {
-          const encoder = await createCommandEncoder(device);
+        const encoder = await createCommandEncoder(device);
         const src = device.createBuffer({size: 16, usage: GPUBufferUsage.COPY_SRC});
         const dst = device.createBuffer({size: 32, usage: GPUBufferUsage.COPY_DST});
         await expectValidationError(true, async () => {
