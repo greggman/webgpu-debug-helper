@@ -55,13 +55,21 @@ if (args.threejs || args.webgpuSamples) {
   // Some strange bug, even without webgpu-debug-helper these
   // examples fail in puppeteer.
   const skip = [
-    //'webgpu_instancing_morph.html',
-    //'webgpu_loader_gltf_compressed.html',
-    //'webgpu_materials.html',
-    //'webgpu_morphtargets.html',
-    //'webgpu_morphtargets_face.html',
-    //'webgpu_sandbox.html',
-    //'webgpu_video_panorama.html',
+    // three.js
+    'webgpu_instancing_morph.html',
+    'webgpu_loader_gltf_compressed.html',
+    'webgpu_materials.html',
+    'webgpu_morphtargets.html',
+    'webgpu_morphtargets_face.html',
+    'webgpu_sandbox.html',
+    'webgpu_video_panorama.html',
+
+    // webgpu-samples
+    'computeBoids',
+    'cornell',
+    'imageBlur',
+    'skinnedMesh',
+    'videoUploadingWebCodecs',
   ];
   tests.length = 0;  // clear tests
 
@@ -86,7 +94,7 @@ if (args.threejs || args.webgpuSamples) {
     const dir = path.join(__dirname, '..', '..', 'webgpu-samples', 'out', 'sample');
     tests.push(
       ...fs.readdirSync(dir)
-        .filter(f => exists(path.join(dir, f, 'index.html')))
+        .filter(f => exists(path.join(dir, f, 'index.html')) && !skip.includes(f))
         .map((f, i) => ({
           url: `http://localhost:${port}/sample/${f}/index.html`,
           js: exampleInjectJS,
