@@ -16,6 +16,7 @@ program
     .usage('[options] [path-to-serve]')
     .option('--skip-count <count>',  'num to skip', fixedParseInt, 0)
     .option('--threejs',             'test three.js examples')
+    .option('--webgpu-samples',      'test webgpu-samples')
     .option('--use-chrome',          'use chrome');
 
 program.showHelpAfterError('(add --help for additional information)');
@@ -32,18 +33,21 @@ function startServer(port, dir) {
   });
 }
 
+function exists(f) {
+  try {
+    fs.statSync(f);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const args = program.opts();
+const servers = [];
 
-const rootDir = args.threejs
-  ? '../three.js'
-  : path.dirname(__dirname);
-const { server, port } = await startServer(3000, rootDir);
+const tests = [];
 
-const tests = [
-  {url: `http://localhost:${port}/test/index.html?reporter=spec`},
-];
-
-if (args.threejs) {
+if (args.threejs || args.webgpuSamples) {
   const exampleInjectJS =
     fs.readFileSync('test/js/example-inject.js', {encoding: 'utf-8'}) +
     fs.readFileSync('dist/0.x/webgpu-debug-helper.js', {encoding: 'utf-8'});
@@ -51,24 +55,52 @@ if (args.threejs) {
   // Some strange bug, even without webgpu-debug-helper these
   // examples fail in puppeteer.
   const skip = [
-    'webgpu_instancing_morph.html',
-    'webgpu_loader_gltf_compressed.html',
-    'webgpu_materials.html',
-    'webgpu_morphtargets.html',
-    'webgpu_morphtargets_face.html',
-    'webgpu_sandbox.html',
-    'webgpu_video_panorama.html',
+    //'webgpu_instancing_morph.html',
+    //'webgpu_loader_gltf_compressed.html',
+    //'webgpu_materials.html',
+    //'webgpu_morphtargets.html',
+    //'webgpu_morphtargets_face.html',
+    //'webgpu_sandbox.html',
+    //'webgpu_video_panorama.html',
   ];
-
   tests.length = 0;  // clear tests
-  tests.push(...fs.readdirSync(path.join(__dirname, '..', '..', 'three.js', 'examples'))
-    .filter(f => f.startsWith('webgpu_') && f.endsWith('.html') && !skip.includes(f))
-    .map((f, id) => ({
-      url: `http://localhost:${port}/examples/${f}`,
-      js: exampleInjectJS,
-      id: id + 1,
-    })));
+
+  if (args.threejs) {
+    const { server, port } = await startServer(3000, '../three.js');
+    servers.push(server);
+
+    tests.push(
+      ...fs.readdirSync(path.join(__dirname, '..', '..', 'three.js', 'examples'))
+        .filter(f => f.startsWith('webgpu_') && f.endsWith('.html') && !skip.includes(f))
+        .map((f, i) => ({
+          url: `http://localhost:${port}/examples/${f}`,
+          js: exampleInjectJS,
+          id: tests.length + 1 + i,
+        })));
+  }
+
+  if (args.webgpuSamples) {
+    const { server, port } = await startServer(3000, '../webgpu-samples/out');
+    servers.push(server);
+
+    const dir = path.join(__dirname, '..', '..', 'webgpu-samples', 'out', 'sample');
+    tests.push(
+      ...fs.readdirSync(dir)
+        .filter(f => exists(path.join(dir, f, 'index.html')))
+        .map((f, i) => ({
+          url: `http://localhost:${port}/sample/${f}/index.html`,
+          js: exampleInjectJS,
+          id: tests.length + 1 + i,
+        })));
+  }
+
   tests.splice(0, args.skipCount);
+
+} else {
+  const rootDir = path.dirname(__dirname);
+  const { server, port } = await startServer(3000, rootDir);
+  tests.push({url: `http://localhost:${port}/test/index.html?reporter=spec`});
+  servers.push(server);
 }
 
 test(tests);
@@ -85,6 +117,7 @@ function makePromiseInfo() {
 
 async function test(tests) {
   const browser = await puppeteer.launch({
+    //devtools: true,
     headless: args.useChrome ? false : "new",
     ...(args.useChrome ?? { executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' }),
     args: [
@@ -138,7 +171,7 @@ async function test(tests) {
   }
 
   await browser.close();
-  server.close();
+  servers.forEach(s => s.close());
 
   process.exit(totalFailures ? 1 : 0);  // eslint-disable-line
 }

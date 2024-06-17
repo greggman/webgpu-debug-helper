@@ -18,7 +18,8 @@
     "watch": "rollup -c -w",
     "start": "node build/tools/serve.js",
     "test": "node test/puppeteer.js",
-    "test-threejs": "node test/puppeteer.js --threejs"
+    "test-threejs": "node test/puppeteer.js --threejs",
+    "test-webgpu-samples": "node test/puppeteer.js --webgpu-samples"
   },
   "repository": {
     "type": "git",
