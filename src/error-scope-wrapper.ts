@@ -6,21 +6,6 @@ const deviceToErrorScopeStack: WeakMap<GPUDevice, {filter: GPUErrorFilter, error
 const origPushErrorScope = GPUDevice.prototype.pushErrorScope;
 const origPopErrorScope = GPUDevice.prototype.popErrorScope;
 
-/*
-function getFilterForGPUError(error: GPUError): GPUErrorFilter {
-  if (error instanceof GPUValidationError) {
-    return 'validation';
-  }
-  if (error instanceof GPUOutOfMemoryError) {
-    return 'out-of-memory';
-  }
-  if (error instanceof GPUInternalError) {
-    return 'internal';
-  }
-  throw new Error('unknown GPUError type');
-}
-*/
-
 type AnyFunction = (...args: any[]) => any;
 
 function errorWrapper<T extends AnyFunction>(this: any, device: GPUDevice, fnName: string, origFn: T, ...args: Parameters<T>): ReturnType<T> {
@@ -107,7 +92,7 @@ GPUDevice.prototype.pushErrorScope = (function (origFn) {
 })(GPUDevice.prototype.pushErrorScope);
 
 GPUDevice.prototype.popErrorScope = (function (origFn) {
-  return function (this: GPUDevice) {
+  return async function (this: GPUDevice) {
     const errorScopeStack = deviceToErrorScopeStack.get(this);
     const errorScope = errorScopeStack!.pop();
     if (errorScope === undefined) {

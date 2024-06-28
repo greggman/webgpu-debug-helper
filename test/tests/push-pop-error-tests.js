@@ -1,6 +1,6 @@
 import {describe} from '../mocha-support.js';
 import { itWithDevice } from '../js/utils.js';
-import { assertFalsy, assertInstanceOf } from '../assert.js';
+import { assertFalsy, assertInstanceOf, assertTruthy } from '../assert.js';
 
 describe('test push/pop error scope', () => {
 
@@ -79,5 +79,19 @@ describe('test push/pop error scope', () => {
     //assertInstanceOf(rootErr, GPUValidationError);
     assertInstanceOf(uncapturedError, GPUValidationError);
   });
+
+   itWithDevice('test we get rejection for empty stack, not an exception', async (device) => {
+    let wasRejected = false;
+    try {
+      await device.popErrorScope()
+        .then(() => assertFalsy(true, 'should not succeed'))
+        .catch(() => {
+          wasRejected = true;
+        });
+    } catch {
+      assertFalsy(true, 'should not throw');
+    }
+    assertTruthy(wasRejected, 'was rejected');
+   });
 
 });
