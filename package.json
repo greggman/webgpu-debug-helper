@@ -10,7 +10,6 @@
   "scripts": {
     "build": "npm run make",
     "build-ci": "npm run build && node build/tools/prep-for-deploy.js",
-    "build-show-errors": "tsc --project tsconfig-show-errors.json",
     "make": "rollup -c",
     "check": "npm run lint",
     "check-ci": "npm run pre-push",
