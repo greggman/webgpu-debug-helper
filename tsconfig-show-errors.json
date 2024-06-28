@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "AMD",
+    "outFile": "show-errors/show-errors.js",
+    "allowJs": true,
+    "declaration": false,
+    "typeRoots": [
+      "./node_modules/@webgpu/types",
+      "./node_modules/@types",
+    ],
+  },
+  
+  "include": [
+    "src/error-scope-wrapper.ts",
+  ],
+  "typeAcquisition": {
+    "include": ["@webgpu/types"]
+  }
+}

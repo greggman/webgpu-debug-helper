@@ -95,6 +95,14 @@ examples and inject the helper. Ideally there should be no errors.
 
 You can skip the first N tests with `-- --skip-count=<number>` (the first `--` is required).
 
+### show-errors.js
+
+You can generate show-errors.js with `npm run build-show-errors`.
+
+show-errors.js wraps calls to `pushErrorScope` and `popErrorScope` around every
+method of `GPUDevice` and `GPUQueue`. It is used in the
+[webgpu-dev-extension](https://github.com/greggman/webgpu-dev-extension).
+
 ## License
 
 [MIT](LICENSE.md)
