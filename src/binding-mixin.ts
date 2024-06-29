@@ -147,7 +147,7 @@ function boundBufferRanges(info: BindGroupInfo, dynamicOffsets: Uint32Array) {
   const result = new Map<string, BoundBufferRange>();
   let dynamicOffsetIndex = 0;
   for (const bindGroupEntry of info.entries) {
-    const bindGroupLayoutEntry = info.layoutPlus.bindGroupLayoutDescriptor.entries[bindGroupEntry.binding];
+    const bindGroupLayoutEntry = info.layoutPlus.entriesById[bindGroupEntry.binding];
     if (!bindGroupLayoutEntry.buffer) {
       continue;
     }
@@ -274,9 +274,8 @@ export function encoderBindGroupsAliasAWritableResource(
 
 function* forEachDynamicBinding(info: BindGroupInfo) {
   let dynamicOffsetIndex = 0;
-  const layout = info.layoutPlus.bindGroupLayoutDescriptor;
   for (const entry of info.entries) {
-    const bindingDescriptor = layout.entries[entry.binding];
+    const bindingDescriptor = info.layoutPlus.entriesById[entry.binding];
     if (bindingDescriptor.buffer?.hasDynamicOffset) {
       const bufferBinding = entry.resource as GPUBufferBinding;
       const bufferLayout = bindingDescriptor.buffer;

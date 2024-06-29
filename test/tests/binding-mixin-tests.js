@@ -181,8 +181,8 @@ async function createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, d
   device = device || await (await navigator.gpu.requestAdapter()).requestDevice();
   const { pass, pipeline } = await makePassAndPipeline(device, {
     resourceWGSL: `
-      @group(0) @binding(0) var<uniform> u00: f32;
-      @group(0) @binding(1) var<uniform> u01: f32;
+      @group(0) @binding(1) var<uniform> u00: f32;
+      @group(0) @binding(2) var<uniform> u01: f32;
       @group(1) @binding(0) var<uniform> u10: vec4f;
       @group(2) @binding(0) var<uniform> u20: vec4f;
     `,
@@ -200,8 +200,8 @@ async function createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, d
   const bindGroup0 = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
-      { binding: 0, resource: { buffer: u00Buffer }},
-      { binding: 1, resource: { buffer: u01Buffer }},
+      { binding: 1, resource: { buffer: u00Buffer }},
+      { binding: 2, resource: { buffer: u01Buffer }},
     ],
   });
   const bindGroup1 = device.createBindGroup({
@@ -240,8 +240,8 @@ async function createResourcesForExplicitLayoutBindGroupTests({
   const bindGroupLayouts = [
     {
       entries: [
-        { binding: 0, visibility, buffer: {} },
         { binding: 1, visibility, buffer: {} },
+        { binding: 2, visibility, buffer: {} },
       ],
     },
     {
@@ -262,8 +262,8 @@ async function createResourcesForExplicitLayoutBindGroupTests({
   const { pass, pipeline } = await makePassAndPipeline(device, {
     layout,
     resourceWGSL: `
-      @group(0) @binding(0) var<uniform> u00: f32;
-      @group(0) @binding(1) var<uniform> u01: f32;
+      @group(0) @binding(1) var<uniform> u00: f32;
+      @group(0) @binding(2) var<uniform> u01: f32;
       @group(1) @binding(0) var<uniform> u10: vec4f;
       @group(2) @binding(0) var<uniform> u20: vec4f;
     `,
@@ -282,8 +282,8 @@ async function createResourcesForExplicitLayoutBindGroupTests({
   const bindGroup0 = device.createBindGroup({
     layout: bindGroupLayouts[0],
     entries: [
-      { binding: 0, resource: { buffer: u00Buffer }},
-      { binding: 1, resource: { buffer: u01Buffer }},
+      { binding: 1, resource: { buffer: u00Buffer }},
+      { binding: 2, resource: { buffer: u01Buffer }},
     ],
   });
   const bindGroup1 = device.createBindGroup({
@@ -322,7 +322,7 @@ export function addValidateBindGroupTests({
 
     describe('auto layout', () => {
 
-       itWithDevice('works with auto layout', async (device) => {
+      itWithDevice('works with auto layout', async (device) => {
         const { pass, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         pass.setBindGroup(0, bindGroup0);
         pass.setBindGroup(1, bindGroup1);
@@ -333,7 +333,7 @@ export function addValidateBindGroupTests({
         });
       });
 
-       itWithDevice('fails if missing bindGroup', async (device) => {
+      itWithDevice('fails if missing bindGroup', async (device) => {
         const { pass, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         pass.setBindGroup(1, bindGroup1);
         pass.setBindGroup(2, bindGroup2);
@@ -343,7 +343,7 @@ export function addValidateBindGroupTests({
         });
       });
 
-       itWithDevice('fails if resource is destroyed', async (device) => {
+      itWithDevice('fails if resource is destroyed', async (device) => {
         const { pass, u01Buffer, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         pass.setBindGroup(0, bindGroup0);
         pass.setBindGroup(1, bindGroup1);
@@ -355,7 +355,7 @@ export function addValidateBindGroupTests({
         });
       });
 
-       itWithDevice('fails if layout is incompatible (auto layout)', async (device) => {
+      itWithDevice('fails if layout is incompatible (auto layout)', async (device) => {
         const { pass, bindGroup0, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         const { bindGroup1 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         pass.setBindGroup(0, bindGroup0);
@@ -367,7 +367,7 @@ export function addValidateBindGroupTests({
         });
       });
 
-       itWithDevice('works if layout is compatible (auto layout)', async (device) => {
+      itWithDevice('works if layout is compatible (auto layout)', async (device) => {
         const { pass, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         pass.setBindGroup(0, bindGroup0);
         pass.setBindGroup(1, bindGroup2);  // 2 and 1 are swapped but
@@ -378,7 +378,7 @@ export function addValidateBindGroupTests({
         });
       });
 
-       itWithDevice('false if layout is incompatible (auto layout + manual bindGroupLayout)', async (device) => {
+      itWithDevice('false if layout is incompatible (auto layout + manual bindGroupLayout)', async (device) => {
         const { pass, bindGroup0, bindGroup1, u20Buffer } = await createResourcesForAutoLayoutBindGroupTests(makePassAndPipeline, device);
         const bindGroupLayout = device.createBindGroupLayout({
           entries: [
@@ -408,7 +408,7 @@ export function addValidateBindGroupTests({
 
     describe('explicit layout', () => {
 
-       itWithDevice('works with explicit layout', async (device) => {
+      itWithDevice('works with explicit layout', async (device) => {
         const { pass, bindGroup0, bindGroup1, bindGroup2 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, visibility, device });
         pass.setBindGroup(0, bindGroup0);
         pass.setBindGroup(1, bindGroup1);
@@ -419,7 +419,32 @@ export function addValidateBindGroupTests({
         });
       });
 
-       itWithDevice('works with different explicit layout if they are compatible', async (device) => {
+      itWithDevice('fails with incompatible bind group (bindGroup has out of range bindings)', async (device) => {
+        const { pass, bindGroup1, bindGroup2, u00Buffer } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, visibility, device });
+
+        const bindGroupLayout = device.createBindGroupLayout({
+          entries: [
+            { binding: 3, visibility, buffer: {} },
+          ],
+        });
+
+        const bindGroup0 = device.createBindGroup({
+          layout: bindGroupLayout,
+          entries: [
+            { binding: 3, resource: { buffer: u00Buffer }},
+          ],
+        });
+
+        pass.setBindGroup(0, bindGroup0);
+        pass.setBindGroup(1, bindGroup1);
+        pass.setBindGroup(2, bindGroup2);
+
+        await expectValidationError(true, async () => {
+          await execute(pass);
+        });
+      });
+
+      itWithDevice('works with different explicit layout if they are compatible', async (device) => {
         const { pass, bindGroup0, bindGroup1 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, visibility, device });
         const { bindGroup2 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, device, visibility });
         pass.setBindGroup(0, bindGroup0);
@@ -431,7 +456,7 @@ export function addValidateBindGroupTests({
         });
       });
 
-       itWithDevice('fails with incompatible bindGroup', async (device) => {
+      itWithDevice('fails with incompatible bindGroup', async (device) => {
         const { pass, bindGroup1, bindGroup2 } = await createResourcesForExplicitLayoutBindGroupTests({ makePassAndPipeline, visibility, device });
         pass.setBindGroup(0, bindGroup1); // incompatible
         pass.setBindGroup(1, bindGroup1);

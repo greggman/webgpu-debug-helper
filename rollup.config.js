@@ -27,4 +27,17 @@ export default [
         ],
         plugins,
     },
+    {
+        input: `src/error-scope-wrapper.ts`,
+        output: [
+            {
+                file: `show-errors/show-errors.js`,
+                format: 'umd',
+                sourcemap: false,
+                freeze: false,
+                banner: `/* show-errors@${pkg.version}, license MIT */`,
+            },
+        ],
+        plugins,
+    },
 ];

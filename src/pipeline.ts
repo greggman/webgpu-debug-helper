@@ -6,11 +6,13 @@ import { arraysEqual, trimNulls } from './utils.js';
 import { wrapFunctionAfter } from "./wrap-api.js";
 
 type BindGroupLayoutDescriptor = {
+  /** this is sparse! */
   entries: GPUBindGroupLayoutEntry[];
 };
 
 export type BindGroupLayoutDescriptorPlus = {
   bindGroupLayoutDescriptor: BindGroupLayoutDescriptor,
+  entriesById: Record<number, GPUBindGroupLayoutEntry>;
   dynamicOffsetCount: number,
   signature: string,
 }

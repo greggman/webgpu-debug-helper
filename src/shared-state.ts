@@ -1,3 +1,7 @@
+import {
+  DeviceResource,
+  s_objToDevice,
+} from './object-to-device.js';
 import { BindGroupLayoutDescriptorPlus } from './pipeline.js';
 import {
   assert,
@@ -7,27 +11,10 @@ import {
   wrapFunctionBefore,
 } from './wrap-api.js';
 
-export type DeviceResource =
-  | GPUBindGroup
-  | GPUBindGroupLayout
-  | GPUBuffer
-  | GPUCanvasContext
-  | GPUCommandEncoder
-  | GPUComputePassEncoder
-  | GPUComputePipeline
-  | GPUExternalTexture
-  | GPUPipelineLayout
-  | GPUQuerySet
-  | GPUQueue
-  | GPURenderBundle
-  | GPURenderBundleEncoder
-  | GPURenderPassEncoder
-  | GPURenderPipeline
-  | GPUSampler
-  | GPUShaderModule
-  | GPUTexture
-
-export const s_objToDevice = new WeakMap<DeviceResource, GPUDevice>();
+export {
+  DeviceResource,
+  s_objToDevice,
+};
 
 export type Destroyable = GPUTexture | GPUBuffer | GPUQuerySet | GPUDevice;
 

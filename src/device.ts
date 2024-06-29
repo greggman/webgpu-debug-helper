@@ -101,12 +101,14 @@ function  bindGroupLayoutDescriptorToBindGroupLayoutDescriptorPlus(
     src: GPUBindGroupLayoutDescriptor,
     autoId: number): BindGroupLayoutDescriptorPlus {
   const bindGroupLayoutDescriptor = {
-    entries: [...src.entries].map(reifyBindGroupLayoutEntry).sort((a, b) => a.binding - b.binding),
+    entries: [...src.entries].map(reifyBindGroupLayoutEntry),
   };
+  const entriesById = Object.fromEntries(bindGroupLayoutDescriptor.entries.map(e => [e.binding, e]));
   const dynamicOffsetCount = bindGroupLayoutDescriptor.entries.reduce((a, v) => a + (v.buffer?.hasDynamicOffset ? 1 : 0), 0);
   const signature = `${JSON.stringify(bindGroupLayoutDescriptor)}${autoId ? `:autoId(${autoId})` : ''})`;
   return {
     bindGroupLayoutDescriptor,
+    entriesById,
     dynamicOffsetCount,
     signature,
   };
