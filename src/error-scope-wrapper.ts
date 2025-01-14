@@ -21,12 +21,14 @@ if (typeof GPUDevice !== 'undefined') {
 
     const promise = origPopErrorScope.call(device)
       .then(error => {
-        // If there was a currentErrorScope when we added pushed then remove our promise
+        // If there was a currentErrorScope and there was no error the remove our promise.
         if (currentErrorScope) {
-          const ndx = currentErrorScope.errors.indexOf(promise);
-          if (ndx) {
-            currentErrorScope.errors.splice(ndx, 1);
-          }
+           if (!error) {
+               const ndx = currentErrorScope.errors.indexOf(promise);
+               if (ndx) {
+                  currentErrorScope.errors.splice(ndx, 1);
+               }
+           }
         } else {
           // there was no currentErrorScope so emit the error
           if (error) {
@@ -102,7 +104,10 @@ if (typeof GPUDevice !== 'undefined') {
         throw new DOMException('popErrorScope called on empty error scope stack', 'OperationError');
       }
       const errPromise = origFn.call(this);
-      return errorScope.errors.pop() ?? errPromise;
+      errorScope.errors.push(errPromise);
+      const errors = await Promise.all(errorScope.errors);
+      const error = errors.find(v => !!v);
+      return error ?? null;
     };
   })(GPUDevice.prototype.popErrorScope);
 
