@@ -1,6 +1,6 @@
 import {describe} from '../mocha-support.js';
 import { itWithDevice } from '../js/utils.js';
-import { assertEqual, assertFalsy, assertInstanceOf, assertTruthy } from '../assert.js';
+import { assertEqual, assertFalsy, assertInstanceOf } from '../assert.js';
 
 function causeError(device, filter) {
   switch (filter) {
