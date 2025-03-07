@@ -1,4 +1,4 @@
-/* webgpu-debug-helper@0.2.0, license MIT */
+/* webgpu-debug-helper@0.2.1, license MIT */
 (function (factory) {
     typeof define === 'function' && define.amd ? define(factory) :
     factory();
