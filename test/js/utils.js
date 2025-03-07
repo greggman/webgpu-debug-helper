@@ -78,3 +78,12 @@ export function itWithDevice(desc, fn) {
     device.destroy();
   });
 }
+
+export function makeExposedPromise() {
+  const p = {};
+  p.promise = new Promise((resolve, reject) => {
+    p.resolve = resolve;
+    p.reject = reject;
+  });
+  return p;
+}

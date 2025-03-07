@@ -176,6 +176,6 @@ describe('test push/pop error scope', () => {
     }
     assertInstanceOf(rejectedError, DOMException);
     assertEqual(rejectedError.name, 'OperationError');
-   });
+  });
 
 });

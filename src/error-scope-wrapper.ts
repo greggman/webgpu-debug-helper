@@ -53,6 +53,13 @@ if (typeof GPUDevice !== 'undefined') {
     return result;
   }
 
+  function debugGroupWrapper<T extends AnyFunction>(this: any, device: GPUDevice, fnName: string, origFn: T, ...args: Parameters<T>): ReturnType<T> {
+    this.pushDebugGroup(`${fnName}:\n${new Error().stack}`);
+    const result = origFn.call(this, ...args);
+    this.popDebugGroup();
+    return result;
+  }
+
   function addErrorWrapper<T extends { prototype: any }>(api: T, fnName: keyof T['prototype'] & PropertyKey): void {
     const origFn = api.prototype[fnName] as AnyFunction;
     api.prototype[fnName] = function (this: any, ...args: any[]) {
@@ -68,6 +75,13 @@ if (typeof GPUDevice !== 'undefined') {
     };
   }
 
+  function addDebugGroupWrapper<T extends { prototype: any }>(api: T, fnName: keyof T['prototype'] & PropertyKey): void {
+    const origFn = api.prototype[fnName] as AnyFunction;
+    api.prototype[fnName] = function (this: any, ...args: any[]) {
+      return debugGroupWrapper.call(this, this, fnName.toString(), origFn, ...args);
+    };
+  }
+
   /**
    * given a class returns all the method names.
    */
@@ -77,16 +91,35 @@ if (typeof GPUDevice !== 'undefined') {
        .map(([name]) => name as keyof T['prototype'] & PropertyKey);
   }
 
-  const skip = new Set([
-    'pushErrorScope',
-    'popErrorScope',
-    'destroy',
-  ]);
-  getAPIFunctionNames(GPUDevice)
-    .filter(n => !skip.has(n))
-    .forEach(n => addErrorWrapper(GPUDevice, n));
-  getAPIFunctionNames(GPUQueue)
-    .forEach(n => addErrorWrapperWithDevice(GPUQueue, n));
+  {
+    const skip = new Set([
+      'pushErrorScope',
+      'popErrorScope',
+      'destroy',
+    ]);
+    getAPIFunctionNames(GPUDevice)
+      .filter(n => !skip.has(n))
+      .forEach(n => addErrorWrapper(GPUDevice, n));
+    getAPIFunctionNames(GPUQueue)
+      .forEach(n => addErrorWrapperWithDevice(GPUQueue, n));
+  }
+
+  {
+    const skip = new Set(['pushDebugGroup', 'popDebugGroup']);
+
+    getAPIFunctionNames(GPUCommandEncoder)
+      .filter(n => !skip.has(n))
+      .forEach(n => addDebugGroupWrapper(GPUCommandEncoder, n));
+    getAPIFunctionNames(GPUComputePassEncoder)
+      .filter(n => !skip.has(n))
+      .forEach(n => addDebugGroupWrapper(GPUComputePassEncoder, n));
+    getAPIFunctionNames(GPURenderPassEncoder)
+      .filter(n => !skip.has(n))
+      .forEach(n => addDebugGroupWrapper(GPURenderPassEncoder, n));
+    getAPIFunctionNames(GPURenderBundleEncoder)
+      .filter(n => !skip.has(n))
+      .forEach(n => addDebugGroupWrapper(GPURenderBundleEncoder, n));
+  }
 
   GPUDevice.prototype.pushErrorScope = (function (origFn) {
     return function (this: GPUDevice, filter: GPUErrorFilter) {

@@ -95,6 +95,7 @@ if (args.threejs || args.webgpuSamples) {
     tests.push(
       ...fs.readdirSync(dir)
         .filter(f => exists(path.join(dir, f, 'index.html')) && !skip.includes(f))
+        .filter(f => exists(path.join(dir, f, 'show-errors-index.html')) && !skip.includes(f))
         .map((f, i) => ({
           url: `http://localhost:${port}/sample/${f}/index.html`,
           js: exampleInjectJS,
