@@ -105,7 +105,7 @@ if (typeof GPUDevice !== 'undefined') {
   }
 
   {
-    const skip = new Set(['pushDebugGroup', 'popDebugGroup']);
+    const skip = new Set(['pushDebugGroup', 'popDebugGroup', 'finish', 'end']);
 
     getAPIFunctionNames(GPUCommandEncoder)
       .filter(n => !skip.has(n))
