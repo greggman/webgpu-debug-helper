@@ -178,4 +178,12 @@ describe('test push/pop error scope', () => {
     assertEqual(rejectedError.name, 'OperationError');
   });
 
+  itWithDevice('test no error on end/finish', async (device) => {
+    const encoder = device.createCommandEncoder();
+    const pass = encoder.beginComputePass();
+    pass.end();
+    device.queue.submit([encoder.finish()]);
+
+  });
+
 });
