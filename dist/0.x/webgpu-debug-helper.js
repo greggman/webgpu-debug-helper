@@ -1,4 +1,4 @@
-/* webgpu-debug-helper@0.2.2, license MIT */
+/* webgpu-debug-helper@0.2.3, license MIT */
 (function (factory) {
     typeof define === 'function' && define.amd ? define(factory) :
     factory();
@@ -7453,9 +7453,9 @@ pipeline is: ${JSON.stringify(pipelineDesc.passLayoutInfo.renderPassLayout, null
         validateEncoderState(this, info.state);
         validateEncoderBindGroups(info.bindGroups, info.pipeline);
         const device = s_objToDevice.get(this);
-        assert(workgroupCountX < device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountX(${workgroupCountX} > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
-        assert(workgroupCountY < device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountY(${workgroupCountY} > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
-        assert(workgroupCountZ < device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountZ(${workgroupCountZ} > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
+        assert(workgroupCountX <= device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountX(${workgroupCountX}) > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
+        assert(workgroupCountY <= device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountY(${workgroupCountY}) > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
+        assert(workgroupCountZ <= device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountZ(${workgroupCountZ}) > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
     });
     const kIndirectDispatchWorkgroupsParametersSize = 12;
     wrapFunctionBefore(GPUComputePassEncoder, 'dispatchWorkgroupsIndirect', function ([indirectBuffer, indirectOffset]) {

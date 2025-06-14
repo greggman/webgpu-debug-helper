@@ -68,9 +68,9 @@ wrapFunctionBefore(GPUComputePassEncoder, 'dispatchWorkgroups', function (this: 
   validateEncoderBindGroups(info.bindGroups, info.pipeline);
 
   const device = s_objToDevice.get(this)!;
-  assert(workgroupCountX < device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountX(${workgroupCountX} > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
-  assert(workgroupCountY < device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountY(${workgroupCountY} > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
-  assert(workgroupCountZ < device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountZ(${workgroupCountZ} > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
+  assert(workgroupCountX <= device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountX(${workgroupCountX}) > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
+  assert(workgroupCountY <= device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountY(${workgroupCountY}) > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
+  assert(workgroupCountZ <= device.limits.maxComputeWorkgroupsPerDimension, () => `workGroupCountZ(${workgroupCountZ}) > device.limits.maxComputeWorkgroupsPerDimension(${device.limits.maxComputeWorkgroupsPerDimension})`);
 });
 
 const kIndirectDispatchWorkgroupsParametersSize = 12;
