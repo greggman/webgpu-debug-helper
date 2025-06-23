@@ -25,8 +25,13 @@
     "type": "git",
     "url": "git+https://github.com/greggman/webgpu-debug-helper.git"
   },
+  "exports": {
+    ".": "./dist/0.x/webgpu-debug-helper.js",
+    "./show-errors": "./show-errors/show-errors.js"
+  },
   "files": [
-    "dist/**"
+    "dist/**",
+    "show-errors/**"
   ],
   "keywords": [
     "webgpu",
