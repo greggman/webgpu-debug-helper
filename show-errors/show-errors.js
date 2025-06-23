@@ -1,4 +1,4 @@
-/* show-errors@0.2.7, license MIT */
+/* show-errors@0.2.8, license MIT */
 (function (factory) {
     typeof define === 'function' && define.amd ? define(factory) :
     factory();
