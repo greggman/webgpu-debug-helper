@@ -1,6 +1,6 @@
 {
   "name": "webgpu-debug-helper",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "webgpu debug helper",
   "main": "dist/0.x/webgpu-debug-helper.js",
   "type": "module",
@@ -70,6 +70,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "webgpu-debug-helper": "^0.2.6",
     "webgpu-utils": "^1.10.3"
   }
 }
