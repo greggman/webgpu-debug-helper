@@ -44,7 +44,8 @@ function getResourceFromBindingResource(bindingResource: GPUBindingResource) {
   if (bindingResource instanceof GPUTextureView) {
     return s_textureViewToTexture.get(bindingResource)!;
   } else if (bindingResource instanceof GPUSampler ||
-        bindingResource instanceof GPUExternalTexture) {
+        bindingResource instanceof GPUExternalTexture ||
+        bindingResource instanceof GPUBuffer) {
     return bindingResource;
   } else {
     return bindingResource.buffer;
@@ -75,16 +76,15 @@ bindGroup.layout = ${JSON.stringify(bindGroupInfo.layoutPlus.bindGroupLayoutDesc
 pipeline.group[${group}] requirements = ${JSON.stringify(bindGroupLayoutDescriptor.bindGroupLayoutDescriptor, null, 2)}`;
 }
 
-//function validateEncoderBindGroupsDoNotAliasAWritableResource() {
-//  //
-//}
-
 export function validateEncoderBindGroups(bindGroups: BindGroupBinding[], pipeline?: GPURenderPipeline | GPUComputePipeline) {
   assert(!!pipeline, 'no pipeline set');
   const device = s_objToDevice.get(pipeline);
 
   const reifiedPipelineDescriptor = s_pipelineToReifiedPipelineLayoutDescriptor.get(pipeline)!;
   reifiedPipelineDescriptor.bindGroupLayoutDescriptors.forEach((bindGroupLayoutDescriptor, group) => {
+    if (bindGroupLayoutDescriptor === undefined) {
+      return;
+    }
     const binding = bindGroups[group];
     assert(!!binding, () => `required bindGroup missing from group(${group})`);
     const bindGroupInfo = s_bindGroupToInfo.get(binding.bindGroup)!;
