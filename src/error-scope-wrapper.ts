@@ -5,9 +5,10 @@ import {
 
 if (typeof GPUDevice !== 'undefined') {
 
-  const deviceToErrorScopeStack: WeakMap<GPUDevice, {filter: GPUErrorFilter, errors: Promise<GPUError | null>[]}[]> = new WeakMap();
+  const deviceToErrorScopeStack = new WeakMap<GPUDevice, {filter: GPUErrorFilter, errors: Promise<GPUError | null>[]}[]>();
   const origPushErrorScope = GPUDevice.prototype.pushErrorScope;
   const origPopErrorScope = GPUDevice.prototype.popErrorScope;
+  const passToEncoderMap = new WeakMap<GPURenderPassEncoder | GPUComputePassEncoder, GPUCommandEncoder>();
 
   type AnyFunction = (...args: any[]) => any;
 
@@ -60,6 +61,23 @@ if (typeof GPUDevice !== 'undefined') {
     return result;
   }
 
+  function pushDebugGroupWrapper<T extends AnyFunction>(this: any, device: GPUDevice, fnName: string, origFn: T, ...args: Parameters<T>): ReturnType<T> {
+    this.pushDebugGroup(`${fnName}:\n${new Error().stack}`);
+    const result = origFn.call(this, ...args);
+    passToEncoderMap.set(result, this);
+    return result;
+  }
+
+  function popDebugGroupWrapper<T extends AnyFunction>(this: any, device: GPUDevice, fnName: string, origFn: T, ...args: Parameters<T>): ReturnType<T> {
+    const result = origFn.call(this, ...args);
+    const encoder = passToEncoderMap.get(this);
+    if (encoder) {
+      passToEncoderMap.delete(this);
+      encoder.popDebugGroup();
+    }
+    return result;
+  }
+
   function addErrorWrapper<T extends { prototype: any }>(api: T, fnName: keyof T['prototype'] & PropertyKey): void {
     const origFn = api.prototype[fnName] as AnyFunction;
     api.prototype[fnName] = function (this: any, ...args: any[]) {
@@ -79,6 +97,20 @@ if (typeof GPUDevice !== 'undefined') {
     const origFn = api.prototype[fnName] as AnyFunction;
     api.prototype[fnName] = function (this: any, ...args: any[]) {
       return debugGroupWrapper.call(this, this, fnName.toString(), origFn, ...args);
+    };
+  }
+
+  function addPushDebugGroupWrapper<T extends { prototype: any }>(api: T, fnName: keyof T['prototype'] & PropertyKey): void {
+    const origFn = api.prototype[fnName] as AnyFunction;
+    api.prototype[fnName] = function (this: any, ...args: any[]) {
+      return pushDebugGroupWrapper.call(this, this, fnName.toString(), origFn, ...args);
+    };
+  }
+
+  function addPopDebugGroupWrapper<T extends { prototype: any }>(api: T, fnName: keyof T['prototype'] & PropertyKey): void {
+    const origFn = api.prototype[fnName] as AnyFunction;
+    api.prototype[fnName] = function (this: any, ...args: any[]) {
+      return popDebugGroupWrapper.call(this, this, fnName.toString(), origFn, ...args);
     };
   }
 
@@ -105,7 +137,14 @@ if (typeof GPUDevice !== 'undefined') {
   }
 
   {
-    const skip = new Set(['pushDebugGroup', 'popDebugGroup', 'finish', 'end']);
+    const skip = new Set([
+      'pushDebugGroup',
+      'popDebugGroup',
+      'finish',
+      'end',
+      'beginComputePass',
+      'beginRenderPass',
+    ]);
 
     getAPIFunctionNames(GPUCommandEncoder)
       .filter(n => !skip.has(n))
@@ -119,6 +158,11 @@ if (typeof GPUDevice !== 'undefined') {
     getAPIFunctionNames(GPURenderBundleEncoder)
       .filter(n => !skip.has(n))
       .forEach(n => addDebugGroupWrapper(GPURenderBundleEncoder, n));
+
+    addPushDebugGroupWrapper(GPUCommandEncoder, 'beginComputePass');
+    addPushDebugGroupWrapper(GPUCommandEncoder, 'beginRenderPass');
+    addPopDebugGroupWrapper(GPUComputePassEncoder, 'end');
+    addPopDebugGroupWrapper(GPURenderPassEncoder, 'end');
   }
 
   GPUDevice.prototype.pushErrorScope = (function (origFn) {
