@@ -18,11 +18,11 @@ export type BindGroupLayoutDescriptorPlus = {
 }
 
 export type ReifiedPipelineLayoutDescriptor = {
-  bindGroupLayoutDescriptors: BindGroupLayoutDescriptorPlus[];
+  bindGroupLayoutDescriptors: (BindGroupLayoutDescriptorPlus | undefined)[];
 }
 
 export const s_bindGroupLayoutToBindGroupLayoutDescriptorPlus = new WeakMap<GPUBindGroupLayout, BindGroupLayoutDescriptorPlus>();
-export const s_pipelineLayoutToBindGroupLayoutDescriptorsPlus = new WeakMap<GPUPipelineLayout, BindGroupLayoutDescriptorPlus[]>();
+export const s_pipelineLayoutToBindGroupLayoutDescriptorsPlus = new WeakMap<GPUPipelineLayout,(BindGroupLayoutDescriptorPlus | undefined)[]>();
 
 // getBindGroupLayout always returns a different object which means we can't
 // use it as a key in a map to look up it's layout descriptor ┌∩┐(◣_◢)┌∩┐
@@ -30,7 +30,9 @@ function trackNewBindGroupLayout(this: GPUComputePipeline | GPURenderPipeline, l
   // We need to associate this with it's BindGroupLayoutDescriptorPlus
   const pipelineLayout = s_pipelineToReifiedPipelineLayoutDescriptor.get(this)!;
   const descPlus = pipelineLayout.bindGroupLayoutDescriptors[group];
-  s_bindGroupLayoutToBindGroupLayoutDescriptorPlus.set(layout, descPlus);
+  if (descPlus) {
+    s_bindGroupLayoutToBindGroupLayoutDescriptorPlus.set(layout, descPlus);
+  }
 }
 
 wrapFunctionAfter(GPUComputePipeline, 'getBindGroupLayout', trackNewBindGroupLayout);

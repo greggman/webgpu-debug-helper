@@ -40,6 +40,8 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyBufferToBuffer', function (this: GPUC
   getCommandBufferInfoAndValidateState(this);
   assertNotDestroyed(src);
   assertNotDestroyed(dst);
+  dstOffset = dstOffset ?? 0;
+  size = size ?? src.size - srcOffset;
   const device = s_objToDevice.get(this);
   assert(device === s_objToDevice.get(src), 'src is not from same device as commandEncoder', [src, this]);
   assert(device === s_objToDevice.get(dst), 'dst is not from same device as commandEncoder', [dst, this]);

@@ -295,7 +295,9 @@ async function createResourcesForExplicitLayoutBindGroupTests({
   const bindGroup2 = device.createBindGroup({
     layout: bindGroupLayouts[2],
     entries: [
+      // TODO: delete this line and uncomment the next
       { binding: 0, resource: { buffer: u20Buffer }},
+      // { binding: 0, resource: u20Buffer },
     ],
   });
   return {

@@ -151,7 +151,8 @@ wrapFunctionAfter(GPUDevice, 'createBindGroup', function (this: GPUDevice, bindG
   // copy the entries since the user might change them
   const entries = [];
   for (const {binding, resource} of [...desc.entries]) {
-    const r = resource instanceof GPUSampler ||
+    const r = resource instanceof GPUBuffer ||
+              resource instanceof GPUSampler ||
               resource instanceof GPUTextureView ||
               resource instanceof GPUExternalTexture
         ? resource
@@ -247,8 +248,8 @@ wrapFunctionAfter(GPUDevice, 'createBindGroupLayout', function (this: GPUDevice,
 
 wrapFunctionAfter(GPUDevice, 'createPipelineLayout', function (this: GPUDevice, pipelineLayout: GPUPipelineLayout, [desc]) {
   // need to copy the description because the user may change it after
-  const bglDescriptorsPlus: BindGroupLayoutDescriptorPlus[] =
-    [...desc.bindGroupLayouts].map(bgl =>  s_bindGroupLayoutToBindGroupLayoutDescriptorPlus.get(bgl)!);
+  const bglDescriptorsPlus: (BindGroupLayoutDescriptorPlus | undefined)[] =
+    [...desc.bindGroupLayouts].map(bgl => bgl ? s_bindGroupLayoutToBindGroupLayoutDescriptorPlus.get(bgl)! : undefined);
   s_pipelineLayoutToBindGroupLayoutDescriptorsPlus.set(pipelineLayout, bglDescriptorsPlus);
 }
 
