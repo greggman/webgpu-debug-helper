@@ -109,6 +109,7 @@ if (args.threejs || args.webgpuSamples) {
   const rootDir = path.dirname(__dirname);
   const { server, port } = await startServer(3000, rootDir);
   tests.push({url: `http://localhost:${port}/test/index.html?reporter=spec`});
+  tests.push({url: `http://localhost:${port}/test/show-errors-index.html?reporter=spec`});
   servers.push(server);
 }
 

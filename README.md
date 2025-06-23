@@ -57,6 +57,8 @@ or
 <script type="module" src="https://greggman.github.io/webgpu-debug-helper/dist/0.x/webgpu-debug-helper.js" crossorigin>
 ```
 
+or from the npm package.
+
 There is nothing else to do. The webgpu-debug-helper will wrap the WebGPU API and
 start generating error messages. 
 
@@ -67,6 +69,19 @@ if (debug) {
   await import('./webgpu-debug-helper.js');
 }
 ```
+
+## Alternative Usage
+
+There is also a script at `https://greggman.github.io/webgpu-debug-helper/show-errors/show-errors.js`
+which you can use alternatively.
+
+This one has the advantage that it's smaller and just wraps the API in calls to `pushErrorScope`, `popErrorScope`,
+`pushDebugGroup` and `popDebugGroup`. Do this allows it to provide a stack trace where errors happened.
+
+The advantage is it's a simpler script and less likely to have bugs. Especially as the API evolves.
+The disadvantage the error will happen later and you'll get a stack trace but it will not stop where the error happened.
+Note: the main script doesn't always stop where they error happened either but it does stop for more situations
+where as this alternative stops at none.
 
 ## Development
 
