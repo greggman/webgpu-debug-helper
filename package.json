@@ -70,7 +70,6 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "webgpu-debug-helper": "^0.2.6",
     "webgpu-utils": "^1.10.3"
   }
 }
