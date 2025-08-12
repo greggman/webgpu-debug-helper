@@ -45,7 +45,8 @@ function getResourceFromBindingResource(bindingResource: GPUBindingResource) {
     return s_textureViewToTexture.get(bindingResource)!;
   } else if (bindingResource instanceof GPUSampler ||
         bindingResource instanceof GPUExternalTexture ||
-        bindingResource instanceof GPUBuffer) {
+        bindingResource instanceof GPUBuffer ||
+        bindingResource instanceof GPUTexture) {
     return bindingResource;
   } else {
     return bindingResource.buffer;
@@ -110,6 +111,8 @@ export function validateBindGroupResourcesNotDestroyed(entries: GPUBindGroupEntr
     if (resource instanceof GPUTextureView) {
       const texture = s_textureViewToTexture.get(resource)!;
       assertNotDestroyed(texture);
+    } else if (resource instanceof GPUTexture) {
+      assertNotDestroyed(resource);
     } else {
       const asBufferBinding = resource as GPUBufferBinding;
       const buffer = asBufferBinding.buffer;
@@ -193,14 +196,14 @@ function aspectToBits(aspect: GPUTextureAspect): number {
   throw new Error('unreachable');
 }
 
-function isTextureViewAliasing(a: GPUTextureView, b: GPUTextureView) {
-  const aTex = s_textureViewToTexture.get(a);
-  const bTex = s_textureViewToTexture.get(b);
+function isTextureViewAliasing(a: GPUTextureView | GPUTexture, b: GPUTextureView | GPUTexture) {
+  const aTex = a instanceof GPUTexture ? a : s_textureViewToTexture.get(a);
+  const bTex = b instanceof GPUTexture ? b : s_textureViewToTexture.get(b);
   if (aTex !== bTex) {
     return false;
   }
-  const aInfo = s_textureViewToDesc.get(a)!;
   const bInfo = s_textureViewToDesc.get(b)!;
+  const aInfo = s_textureViewToDesc.get(a)!;
 
   const aAspect = aspectToBits(aInfo.aspect);
   const bAspect = aspectToBits(bInfo.aspect);
@@ -228,7 +231,7 @@ export function encoderBindGroupsAliasAWritableResource(
     bindGroupLayoutDescriptorPlus: BindGroupLayoutDescriptorPlus[]) {
   for (const stage of kStages) {
     const bufferBindings = new Map<GPUBufferBinding, boolean>();
-    const textureViews = new Map<GPUTextureView, boolean>();
+    const textureViews = new Map<GPUTextureView | GPUTexture, boolean>();
     for (let bindGroupIndex = 0; bindGroupIndex < bindGroups.length; ++bindGroupIndex) {
       const bindGroupBinding = bindGroups[bindGroupIndex];
       if (!bindGroupBinding) {
@@ -254,7 +257,7 @@ export function encoderBindGroupsAliasAWritableResource(
       // check textures
       const textureEntries = bindGroupLayoutDescriptorPlus[bindGroupIndex].bindGroupLayoutDescriptor.entries.filter(e => (e.visibility & stage) !== 0 && (e.texture || e.storageTexture));
       for (const entry of textureEntries) {
-        const resource = bindGroupInfo.entries[entry.binding].resource as GPUTextureView;
+        const resource = bindGroupInfo.entries[entry.binding].resource as (GPUTexture | GPUTextureView);
         const access = entry.storageTexture?.access;
         const resourceWritable = access === 'read-write' || access === 'write-only';
         if (!entry.storageTexture) {

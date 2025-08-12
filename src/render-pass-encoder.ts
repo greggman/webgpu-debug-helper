@@ -74,7 +74,7 @@ function checkTextureNotInUse(inuseTextures: InUseTextures, texture: GPUTexture,
 }
 */
 
-function markTextureInUse(inuseTextures: InUseTextures, texture: GPUTexture, view: GPUTextureView) {
+function markTextureInUse(inuseTextures: InUseTextures, texture: GPUTexture, view: GPUTextureView | GPUTexture) {
   const fullView = s_textureViewToDesc.get(view)!;
   const inUseDepthOrArrayLayers = inuseTextures.get(texture) || new Map<number, InUseMipLevels>();
   inuseTextures.set(texture, inUseDepthOrArrayLayers);
@@ -117,7 +117,7 @@ function validateRenderableTextureView(texture: GPUTexture, viewDesc: TextureVie
 function validateRenderPassColorAttachment(attachment: GPURenderPassColorAttachment, slot: number) {
   const {view, resolveTarget, depthSlice, loadOp } = attachment;
   const renderViewDesc = s_textureViewToDesc.get(view)!;
-  const renderTexture = s_textureViewToTexture.get(view)!;
+  const renderTexture = view instanceof GPUTexture ? view :  s_textureViewToTexture.get(view)!;
   const formatInfo = kAllTextureFormatInfo[renderViewDesc.format];
   validateRenderableTextureView(renderTexture, renderViewDesc);
   assert(!!formatInfo.colorRender, () => `format(${renderViewDesc.format}) is not color renderable`);
@@ -133,7 +133,7 @@ function validateRenderPassColorAttachment(attachment: GPURenderPassColorAttachm
   }
   if (resolveTarget) {
     const resolveViewDesc = s_textureViewToDesc.get(resolveTarget)!;
-    const resolveTexture = s_textureViewToTexture.get(resolveTarget)!;
+    const resolveTexture = resolveTarget instanceof GPUTexture ? resolveTarget : s_textureViewToTexture.get(resolveTarget)!;
     const [tw, th] = logicalMipLevelSpecificTextureExtent(renderTexture, renderViewDesc.baseMipLevel);
     const [rw, rh] = logicalMipLevelSpecificTextureExtent(resolveTexture, resolveViewDesc.baseMipLevel);
     assert(tw === rw && th === rh, () => `resolveTarget render extent(${rw}, ${rh}) != view render extent (${tw}, ${th})`);
@@ -161,7 +161,7 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
   let bytesPerSample = 0;
   let numAttachments = 0;
 
-  const checkRenderExtent = (texture: GPUTexture, view: GPUTextureView) => {
+  const checkRenderExtent = (texture: GPUTexture, view: GPUTextureView | GPUTexture) => {
     const desc = s_textureViewToDesc.get(view)!;
     const [width, height] = logicalMipLevelSpecificTextureExtent(texture, desc.baseMipLevel);
     if (targetWidth === undefined) {
@@ -181,7 +181,7 @@ export function beginRenderPass(commandEncoder: GPUCommandEncoder, passEncoder: 
     }
     ++numAttachments;
     const {view} = attachment;
-    const texture = s_textureViewToTexture.get(view)!;
+    const texture = view instanceof GPUTexture ? view : s_textureViewToTexture.get(view)!;
     assertNotDestroyed(texture);
     assert(s_objToDevice.get(texture) === device, 'texture is not from same device as command encoder', [texture, commandEncoder]);
     const {sampleCount, format} = texture;

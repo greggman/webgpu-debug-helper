@@ -32,6 +32,7 @@ import {
   wrapFunctionAfter,
   wrapAsyncFunctionAfter,
 } from './wrap-api.js';
+import { registerTextureDefaultView } from './texture.js';
 
 const s_shaderModuleToDefs = new WeakMap<GPUShaderModule, ShaderDataDefinitions>();
 
@@ -153,6 +154,7 @@ wrapFunctionAfter(GPUDevice, 'createBindGroup', function (this: GPUDevice, bindG
   for (const {binding, resource} of [...desc.entries]) {
     const r = resource instanceof GPUBuffer ||
               resource instanceof GPUSampler ||
+              resource instanceof GPUTexture ||
               resource instanceof GPUTextureView ||
               resource instanceof GPUExternalTexture
         ? resource
@@ -195,6 +197,7 @@ wrapFunctionAfter(GPUDevice, 'createSampler', function (this: GPUDevice, sampler
 wrapFunctionAfter(GPUDevice, 'createTexture', function (this: GPUDevice, texture: GPUTexture) {
   assertNotDestroyed(this);
   s_objToDevice.set(texture, this);
+  registerTextureDefaultView(texture);
 });
 
 wrapFunctionAfter(GPUDevice, 'importExternalTexture', function (this: GPUDevice, externalTexture: GPUExternalTexture) {

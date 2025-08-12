@@ -16,7 +16,7 @@ export type TextureViewDescriptor = {
   arrayLayerCount: GPUIntegerCoordinate;
 };
 export const s_textureViewToTexture = new WeakMap<GPUTextureView, GPUTexture>();
-export const s_textureViewToDesc = new WeakMap<GPUTextureView, TextureViewDescriptor>();
+export const s_textureViewToDesc = new WeakMap<GPUTextureView | GPUTexture, TextureViewDescriptor>();
 
 function resolveTextureAspect(format: GPUTextureFormat, aspect: GPUTextureAspect) {
   switch (aspect) {
@@ -57,6 +57,10 @@ function reifyTextureViewDescriptor(texture: GPUTexture, desc: GPUTextureViewDes
           )
       ),
   };
+}
+
+export function registerTextureDefaultView(texture: GPUTexture) {
+  s_textureViewToDesc.set(texture, reifyTextureViewDescriptor(texture, undefined));
 }
 
 let lastDesc: GPUTextureViewDescriptor | undefined;

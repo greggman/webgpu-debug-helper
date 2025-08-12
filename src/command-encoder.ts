@@ -242,8 +242,8 @@ wrapFunctionBefore(GPUCommandEncoder, 'copyTextureToTexture', function (this: GP
   const formatInfo = kAllTextureFormatInfo[src.texture.format];
   const isDepthStencil = !!formatInfo.depth && !!formatInfo.stencil;
   if (isDepthStencil) {
-    assert(src.aspect === 'all', () => `src.aspect must be 'all' when format(${src.texture.format}) is a depth-stencil format`, [src.texture]);
-    assert(dst.aspect === 'all', () => `dst.aspect must be 'all' when format(${dst.texture.format}) is a depth-stencil format`, [dst.texture]);
+    assert(src.aspect === 'all' || !src.aspect, () => `src.aspect must be 'all' when format(${src.texture.format}) is a depth-stencil format`, [src.texture]);
+    assert(dst.aspect === 'all' || !src.aspect, () => `dst.aspect must be 'all' when format(${dst.texture.format}) is a depth-stencil format`, [dst.texture]);
   }
 
   validateTextureCopyRange(src, copySize);

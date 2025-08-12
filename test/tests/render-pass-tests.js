@@ -74,6 +74,25 @@ describe('test render pass encoder', () => {
       });
     });
 
+    itWithDevice('errors when colorAttachments are not the same size as textures', async (device) => {
+      const textures = [2, 3].map(width => device.createTexture({
+        size: [width, 3],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+      }));
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(true, () => {
+        encoder.beginRenderPass({
+          colorAttachments: textures.map(texture => ({
+            view: texture,
+            clearColor: [0, 0, 0, 0],
+            loadOp: 'clear',
+            storeOp: 'store',
+          })),
+        });
+      });
+    });
+
     itWithDevice('errors when colorAttachments are not the same sampleCount', async (device) => {
       const textures = [1, 4].map(sampleCount => device.createTexture({
         size: [3, 3],
@@ -108,6 +127,29 @@ describe('test render pass encoder', () => {
             {
               view: textures[0].createView(),
               resolveTarget: textures[1].createView(),
+              clearColor: [0, 0, 0, 0],
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+          ],
+        });
+      });
+    });
+
+    itWithDevice('works with resolveTarget as texture', async (device) => {
+      const textures = [4, 1].map(sampleCount => device.createTexture({
+        size: [3, 3],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        format: 'rgba8unorm',
+        sampleCount,
+      }));
+      const encoder = device.createCommandEncoder();
+      await expectValidationError(false, () => {
+        encoder.beginRenderPass({
+          colorAttachments: [
+            {
+              view: textures[0],
+              resolveTarget: textures[1],
               clearColor: [0, 0, 0, 0],
               loadOp: 'clear',
               storeOp: 'store',

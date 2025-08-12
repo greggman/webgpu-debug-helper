@@ -52,7 +52,7 @@
     "@types/node": "20.0.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "@webgpu/types": "^0.1.61",
+    "@webgpu/types": "^0.1.64",
     "commander": "^12.1.0",
     "eslint": "^8.57.1",
     "eslint-plugin-html": "^8.1.3",
