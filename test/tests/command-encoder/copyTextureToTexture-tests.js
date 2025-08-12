@@ -5,7 +5,7 @@ import {createCommandEncoder, createDeviceWith4x4Format16BytesPerPixel, itWithDe
 export default function () {
   describe('test copyTextureToTexture', () => {
 
-     itWithDevice('works', async (device) => {
+    itWithDevice('works', async (device) => {
       const encoder = await createCommandEncoder(device);
       const src = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_SRC });
       const dst = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_DST });
@@ -18,7 +18,7 @@ export default function () {
       });
     });
 
-     itWithDevice('fails if encoder is locked', async (device) => {
+    itWithDevice('fails if encoder is locked', async (device) => {
       const encoder = await createCommandEncoder(device);
       encoder.beginComputePass();
       const src = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_SRC });
@@ -32,7 +32,7 @@ export default function () {
       });
     });
 
-     itWithDevice('fails if encoder is finished', async (device) => {
+    itWithDevice('fails if encoder is finished', async (device) => {
       const encoder = await createCommandEncoder(device);
       encoder.finish();
       const src = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_SRC });
@@ -46,7 +46,7 @@ export default function () {
       });
     });
 
-     itWithDevice('fails if src sampleCount != dst sampleCount', async (device) => {
+    itWithDevice('fails if src sampleCount != dst sampleCount', async (device) => {
       const encoder = await createCommandEncoder(device);
       const src = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_SRC });
       const dst = device.createTexture({ format: 'rgba8unorm', size: [4, 4], usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT, sampleCount: 4 });

@@ -56,7 +56,7 @@ describe('test compute pass encoder', () => {
 
  describe('check errors on beginComputePass', () => {
 
-     itWithDevice('errors if 2 passes are started', async (device) => {
+    itWithDevice('errors if 2 passes are started', async (device) => {
       const encoder = await createCommandEncoder(device);
       await createComputePass(device, encoder);
       await expectValidationError(true, async () => {
@@ -64,7 +64,7 @@ describe('test compute pass encoder', () => {
       });
     });
 
-     itWithDevice('can not end twice', async (device) => {
+    itWithDevice('can not end twice', async (device) => {
       const pass = await createComputePass(device);
       pass.end();
       await expectValidationError(true, async () => {
@@ -82,7 +82,7 @@ describe('test compute pass encoder', () => {
 
   describe('check errors on setPipeline', () => {
 
-     itWithDevice('pipeline from different device', async (device) => {
+    itWithDevice('pipeline from different device', async (device) => {
       const pipeline = await createComputePipeline(device);
       const pass = await createComputePass();
       await expectValidationError(true, () => {
@@ -90,7 +90,7 @@ describe('test compute pass encoder', () => {
       });
     });
 
-     itWithDevice('fails if ended', async (device) => {
+    itWithDevice('fails if ended', async (device) => {
       const pipeline = await createComputePipeline(device);
       const pass = await createComputePass(device);
       pass.end();
@@ -138,7 +138,7 @@ describe('test compute pass encoder', () => {
 
   describe('dispatchWorkgroupsIndirect', () => {
 
-     itWithDevice('works', async (device) => {
+    itWithDevice('works', async (device) => {
       const pipeline = await createComputePipeline(device);
       const indirectBuffer = device.createBuffer({size: 12, usage: GPUBufferUsage.INDIRECT});
       const pass = await createComputePass(device);
@@ -148,7 +148,7 @@ describe('test compute pass encoder', () => {
       });
     });
 
-     itWithDevice('fails if indirectBuffer destroyed', async (device) => {
+    itWithDevice('fails if indirectBuffer destroyed', async (device) => {
       const pipeline = await createComputePipeline(device);
       const indirectBuffer = device.createBuffer({size: 12, usage: GPUBufferUsage.INDIRECT});
       const pass = await createComputePass(device);
@@ -159,7 +159,7 @@ describe('test compute pass encoder', () => {
       });
     });
 
-     itWithDevice('fails if indirect offset outside data', async (device) => {
+    itWithDevice('fails if indirect offset outside data', async (device) => {
       const pipeline = await createComputePipeline(device);
       const indirectBuffer = device.createBuffer({size: 12, usage: GPUBufferUsage.INDIRECT});
       const pass = await createComputePass(device);
@@ -169,7 +169,7 @@ describe('test compute pass encoder', () => {
       });
     });
 
-     itWithDevice('fails if indirect size too small', async (device) => {
+    itWithDevice('fails if indirect size too small', async (device) => {
       const pipeline = await createComputePipeline(device);
       const indirectBuffer = device.createBuffer({size: 8, usage: GPUBufferUsage.INDIRECT});
       const pass = await createComputePass(device);

@@ -32,7 +32,7 @@ describe('test device', () => {
 
   describe('test createBindGroup', () =>  {
 
-     itWithDevice('fails if resource buffer is destroyed', async (device) => {
+    itWithDevice('fails if resource buffer is destroyed', async (device) => {
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
       buffer.destroy();
       await expectValidationError(true, async () => {
@@ -42,7 +42,7 @@ describe('test device', () => {
     });
 
     /* TODO: finish buffer tests
-     itWithDevice('fails if size > buffer.size', async (device) => {
+    itWithDevice('fails if size > buffer.size', async (device) => {
 
       const device = await (await navigator.gpu.requestAdapter()).requestDevice();
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
@@ -59,7 +59,7 @@ describe('test device', () => {
 
     });
 
-     itWithDevice('fails if offset + size > buffer.size', async (device) => {
+    itWithDevice('fails if offset + size > buffer.size', async (device) => {
 
       const device = await (await navigator.gpu.requestAdapter()).requestDevice();
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});

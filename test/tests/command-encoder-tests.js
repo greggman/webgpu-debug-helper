@@ -14,7 +14,7 @@ describe('test command encoder', () => {
 
   describe('test finish', () => {
 
-     itWithDevice('can not finish twice', async (device) => {
+    itWithDevice('can not finish twice', async (device) => {
       const encoder = await createCommandEncoder(device);
       encoder.finish();
       await expectValidationError(true, async () => {
@@ -22,7 +22,7 @@ describe('test command encoder', () => {
       });
     });
 
-     itWithDevice('can not finish if locked', async (device) => {
+    itWithDevice('can not finish if locked', async (device) => {
       const encoder = await createCommandEncoder(device);
       encoder.beginComputePass();
       await expectValidationError(true, async () => {
@@ -34,7 +34,7 @@ describe('test command encoder', () => {
 
   describe('test clearBuffer', () => {
 
-     itWithDevice('works', async (device) => {
+    itWithDevice('works', async (device) => {
       const encoder = await createCommandEncoder(device);
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.COPY_DST});
       await expectValidationError(false, async () => {
@@ -42,7 +42,7 @@ describe('test command encoder', () => {
       });
     });
 
-     itWithDevice('fails if encoder is locked', async (device) => {
+    itWithDevice('fails if encoder is locked', async (device) => {
       const encoder = await createCommandEncoder(device);
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.COPY_DST});
       encoder.beginComputePass();
@@ -51,7 +51,7 @@ describe('test command encoder', () => {
       });
     });
 
-     itWithDevice('fails if encoder is finished', async (device) => {
+    itWithDevice('fails if encoder is finished', async (device) => {
       const encoder = await createCommandEncoder(device);
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.COPY_DST});
       encoder.finish();
@@ -60,7 +60,7 @@ describe('test command encoder', () => {
       });
     });
 
-     itWithDevice('fails if buffer is destroyed', async (device) => {
+    itWithDevice('fails if buffer is destroyed', async (device) => {
       const encoder = await createCommandEncoder(device);
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.COPY_DST});
       buffer.destroy();
@@ -69,7 +69,7 @@ describe('test command encoder', () => {
       });
     });
 
-     itWithDevice('fails if buffer is from a different device', async (device) => {
+    itWithDevice('fails if buffer is from a different device', async (device) => {
       const encoder = await createCommandEncoder(device);
       const device2 = await (await navigator.gpu.requestAdapter()).requestDevice();
       const buffer = device2.createBuffer({size: 16, usage: GPUBufferUsage.COPY_DST});
@@ -79,7 +79,7 @@ describe('test command encoder', () => {
       device2.destroy();
     });
 
-     itWithDevice('fails if buffer.usage missing COPY_DST', async (device) => {
+    itWithDevice('fails if buffer.usage missing COPY_DST', async (device) => {
       const encoder = await createCommandEncoder(device);
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.COPY_SRC});
       await expectValidationError(true, async () => {
@@ -87,7 +87,7 @@ describe('test command encoder', () => {
       });
     });
 
-     itWithDevice('fails if size is not multiple of 4', async (device) => {
+    itWithDevice('fails if size is not multiple of 4', async (device) => {
       const encoder = await createCommandEncoder(device);
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.COPY_DST});
       await expectValidationError(true, async () => {
@@ -95,7 +95,7 @@ describe('test command encoder', () => {
       });
     });
 
-     itWithDevice('fails if offset is not multiple of 4', async (device) => {
+    itWithDevice('fails if offset is not multiple of 4', async (device) => {
       const encoder = await createCommandEncoder(device);
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.COPY_DST});
       await expectValidationError(true, async () => {
@@ -103,7 +103,7 @@ describe('test command encoder', () => {
       });
     });
 
-     itWithDevice('fails if offset + size > buffer.size', async (device) => {
+    itWithDevice('fails if offset + size > buffer.size', async (device) => {
       const encoder = await createCommandEncoder(device);
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.COPY_DST});
       await expectValidationError(true, async () => {

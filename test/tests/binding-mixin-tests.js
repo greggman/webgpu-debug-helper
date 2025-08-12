@@ -65,7 +65,7 @@ export function addBindingMixinTests({
 
   describe('check errors on setBindGroup', () => {
 
-     itWithDevice('works', async (device) => {
+    itWithDevice('works', async (device) => {
       const pass = await makePass(device);
       const bindGroup = await createBindGroup(device);
       await expectValidationError(false, () => {
@@ -73,7 +73,7 @@ export function addBindingMixinTests({
       });
     });
 
-     itWithDevice('fails if ended', async (device) => {
+    itWithDevice('fails if ended', async (device) => {
       const pass = await makePass(device);
       const bindGroup = await createBindGroup(device);
       endPass(pass);
@@ -82,7 +82,7 @@ export function addBindingMixinTests({
       });
     });
 
-     itWithDevice('bindGroup from different device', async (device) => {
+    itWithDevice('bindGroup from different device', async (device) => {
       const pass = await makePass(device);
       const bindGroup = await createBindGroup();
       await expectValidationError(true, () => {
@@ -90,7 +90,7 @@ export function addBindingMixinTests({
       });
     });
 
-     itWithDevice('index < 0', async (device) => {
+    itWithDevice('index < 0', async (device) => {
       const pass = await makePass(device);
       const bindGroup = await createBindGroup(device);
       await expectValidationError(true, () => {
@@ -98,7 +98,7 @@ export function addBindingMixinTests({
       });
     });
 
-     itWithDevice('index > max', async (device) => {
+    itWithDevice('index > max', async (device) => {
       const pass = await makePass(device);
       const bindGroup = await createBindGroup(device);
       await expectValidationError(true, () => {
@@ -106,7 +106,7 @@ export function addBindingMixinTests({
       });
     });
 
-     itWithDevice('fails if buffer destroyed', async (device) => {
+    itWithDevice('fails if buffer destroyed', async (device) => {
       const pass = await makePass(device);
       const buffer = device.createBuffer({size: 16, usage: GPUBufferUsage.UNIFORM});
       const bindGroup = await createBindGroup(device, buffer);

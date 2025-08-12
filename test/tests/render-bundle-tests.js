@@ -65,7 +65,7 @@ describe('test render bundle encoder', () => {
 
   describe('check errors on setPipeline', () => {
 
-     itWithDevice('pipeline from different device', async (device) => {
+    itWithDevice('pipeline from different device', async (device) => {
       const pipeline = await createRenderPipeline(device);
       const pass = await createRenderPass();
       await expectValidationError(true, () => {
@@ -73,7 +73,7 @@ describe('test render bundle encoder', () => {
       });
     });
 
-     itWithDevice('fails if ended', async (device) => {
+    itWithDevice('fails if ended', async (device) => {
       const pipeline = await createRenderPipeline(device);
       const pass = await createRenderPass(device);
       pass.end();
